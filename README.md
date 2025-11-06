@@ -1,5 +1,9 @@
 # seenx
 
+```cmd
+!git clone
+```
+
 ## Source separation for audio analysis
 
 - https://source-separation.github.io/tutorial/intro/open_src_projects.html
