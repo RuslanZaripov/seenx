@@ -57,9 +57,9 @@ def speaker_features_pipeline(
     if shot_bounds.shape[0] == 0:
         raise ValueError("No shot boundaries detected in the video.")
 
-    speaker_probs = speaker_feature_extractor.fill_between_intervals(
+    speaker_probs = speaker_feature_extractor.get_speaker_probs(
         shot_bounds, 
-        speaker_image_path, 
+        speaker_image_path,
         video_path
     )
 
