@@ -89,12 +89,13 @@ class EmotionsDetection:
 
     def get_emotions(self, video_path, speaker_probs):
         emotions = {
-           'angry': [],
-           'happy': [],
-           'sad': [],
-           'neutral': [],
-           'fear': [],
-           'surprise': [],
+            'angry': [],
+            'happy': [],
+            'sad': [],
+            'disgust': [],
+            'neutral': [],
+            'fear': [],
+            'surprise': [],
         }
 
         cap = cv2.VideoCapture(video_path)
