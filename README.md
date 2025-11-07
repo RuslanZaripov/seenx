@@ -23,3 +23,8 @@ https://ts.gluon.ai/stable/tutorials/forecasting/quick_start_tutorial.html
 - https://ts.gluon.ai/stable/ library for ts modeling in python
 
 - https://www.youtube.com/watch?v=kA48MLGBAjs - convert ts to regular
+
+
+## Faces 
+
+- https://github.com/YotamNitzan/ID-disentanglement/tree/main
