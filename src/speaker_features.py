@@ -230,7 +230,7 @@ class SpeakerFeatures:
         if not ret:
             return None
         
-        frame_rgb = self.resize_or_crop_center_np(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        frame_rgb = resize_or_crop_center_np(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
         boxes, embeddings = self.get_embeddings(frame_rgb)
         
         if len(embeddings) == 0:
