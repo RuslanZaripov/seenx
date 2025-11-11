@@ -1,15 +1,20 @@
 import pandas as pd
+from logger import Logger
 from speaker_features import speaker_features_pipeline
 from sound_features import sound_features_pipeline
 from zoom_features import zoom_features_pipeline
 from parse_retention import parse_retention
 
 
+logger = Logger(show=True).get_logger('seenx')
+
 def aggregate():
+    logger.info("Starting aggregation of features")
     retention = parse_retention(
-        html_file_path = '/kaggle/input/seenx-videos/retention.html'
+        html_file_path = '/kaggle/input/seenx-videos/faceless_youtube_channel_ideas.html'
     )
     
+    logger.info("Extracting speaker features")
     speaker_features = speaker_features_pipeline(
         speaker_image_path = '/kaggle/input/seenx-videos/speaker_face.png', 
         video_path = '/kaggle/input/seenx-videos/youtube-video.mp4',
@@ -18,10 +23,12 @@ def aggregate():
         transnet_weights_path = '/kaggle/input/seenx-videos/transnetv2-pytorch-weights.pth',
     )
     
+    logger.info("Extracting sound features")
     sound_features = sound_features_pipeline(
         video_path = '/kaggle/input/seenx-videos/youtube-video.mp4'
     )
 
+    logger.info("Extracting zoom features")
     zoom_features = zoom_features_pipeline(
         video_file_path = '/kaggle/input/seenx-videos/youtube-video.mp4',
         show=False, 
