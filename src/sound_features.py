@@ -9,7 +9,7 @@ from logger import Logger
 logger = Logger(show=True).get_logger('seenx')
 
 
-def sound_features_pipeline(audio_file_path, fps=24):
+def sound_features_pipeline(audio_file_path: str, fps: int = 1) -> pd.DataFrame:
     y, sr = librosa.load(audio_file_path, sr=None)
     print(f"Audio shape: {y.shape}, Sample rate: {sr}")
 
@@ -50,4 +50,5 @@ def sound_features_pipeline(audio_file_path, fps=24):
         'centroid': centroid.flatten(),
         'rolloff': rolloff.flatten()
     })
+
     return features

@@ -228,7 +228,8 @@ def speaker_features_pipeline(
         yolo_model_path: str,
         arcface_weight_file: str,
         transnet_weights_path: str
-    ):
+    ) -> pd.DataFrame:
+    
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     speaker_feature_extractor = SpeakerFeatures(
