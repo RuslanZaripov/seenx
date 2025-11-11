@@ -43,7 +43,7 @@ class Logger:
         file_handler.setFormatter(FORMATTER)
         return file_handler
 
-    def get_logger(self, logger_name: str):
+    def get_logger(self, name):
         """
             Class method which creates logger with certain name
 
@@ -53,10 +53,11 @@ class Logger:
         Returns:
             logger: object of Logger class
         """
-        logger = logging.getLogger(logger_name)
-        logger.setLevel(logging.DEBUG)
-        if self.show:
-            logger.addHandler(self.get_console_handler())
-        logger.addHandler(self.get_file_handler())
-        logger.propagate = False
+        logger = logging.getLogger(name)
+        if not logger.hasHandlers():  # Check if handlers are already added
+            logger.setLevel(logging.DEBUG)
+            if self.show:
+                logger.addHandler(self.get_console_handler())
+            logger.addHandler(self.get_file_handler())
+            logger.propagate = False
         return logger

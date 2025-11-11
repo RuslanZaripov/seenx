@@ -187,13 +187,13 @@ class SpeakerFeatures:
 
     def get_speaker_probs(self, intervals, speaker_image_path, video_path, shift: int = 2):
         """Compute speaker probabilities for each frame."""
-        cap = cv2.VideoCapture(video_path)
-        if not cap.isOpened():
-            raise RuntimeError("Error: Cannot open video file.")
-
         img_bgr = cv2.imread(speaker_image_path)
         img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
         _, actual_speaker_embedding = self.get_embeddings(img_rgb)
+        
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            raise RuntimeError("Error: Cannot open video file.")
 
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         speaker_probs = np.zeros(total_frames, dtype=np.float32)
@@ -229,6 +229,10 @@ def speaker_features_pipeline(speaker_image_path, video_path, yolo_model_path, a
 
     speaker_probs = speaker_feature_extractor.get_speaker_probs(shot_bounds, speaker_image_path, video_path)
     emotions = emotion_detector.get_emotions(video_path, speaker_probs)
+
+    logger.info(f"{np.arange(total_frames).shape=}")
+    logger.info(f"{speaker_probs.shape=}")
+    logger.info(f"{[len(emotions[emotion]) for emotion in emotions]}")
 
     total_frames = len(speaker_probs)
     data = {
