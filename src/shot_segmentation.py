@@ -6,7 +6,7 @@ from transnetv2_pytorch import TransNetV2
 from tqdm import tqdm
 from logger import Logger
 
-logger = Logger(show=True).get_logger('seenx')
+logger = Logger(show=True).get_logger()
 
 def predictions_to_scenes(predictions: np.ndarray, threshold: float = 0.5):
     predictions = (predictions > threshold).astype(np.uint8)
