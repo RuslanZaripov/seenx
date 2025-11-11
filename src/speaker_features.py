@@ -8,6 +8,9 @@ from transformers import pipeline
 from arcface_client import ArcFaceClient
 from shot_segmentation import batch_shot_segmentation
 from PIL import Image
+from logger import Logger
+
+logger = Logger(show=True).get_logger('seenx')
 
 
 def resize_or_crop_center_np(frame: np.ndarray, size: int = 640) -> np.ndarray:
@@ -80,12 +83,21 @@ def speaker_features_pipeline(
 
 
 class EmotionsDetection:
-    def __init__(self, yolo_model_path: str, device: str | torch.device = 'cpu'):
+    def __init__(
+            self, 
+            yolo_model_path: str, 
+            device: str | torch.device = 'cpu', 
+            speaker_threshold: float = 0.9,
+            batch_size: int = 32,
+        ):
         self.face_detector = YOLO(yolo_model_path)
         self.pipe = pipeline(
             "image-classification", 
             model="dima806/facial_emotions_image_detection", 
-            device=device)
+            device=device,
+            batch_size=batch_size)
+        self.batch_size = batch_size
+        self.speaker_threshold = speaker_threshold
 
     def get_emotions(self, video_path, speaker_probs):
         labels = list(self.pipe.model.config.label2id.keys())
@@ -98,32 +110,29 @@ class EmotionsDetection:
 
         frame_count = 0
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        max_frames = min(total_frames, 100)
 
-        with tqdm(total=total_frames, desc="Processing video frames", unit="frame") as pbar:
+        face_crops_batch = []
+        frame_indices_batch = []
+
+        with tqdm(total=total_frames, desc="Extracting faces", unit="frame") as pbar:
             while True:
-                if speaker_probs[frame_count] < 0.1:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+
+                if frame_count < len(speaker_probs) and speaker_probs[frame_count] < self.speaker_threshold:
                     frame_count += 1
                     pbar.update(1)
                     for _emotion in emotions.keys():
                         emotions[_emotion].append(0.0)
                     continue
 
-                ret, frame = cap.read()
-                if not ret:
-                    print("End of video reached.")
-                    break
-
                 frame_rgb = resize_or_crop_center_np(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-
-                # plot_numpy_image(f'Frame-{frame_count}', frame_rgb)
-
                 results = self.face_detector(frame_rgb, verbose=False)
-                boxes = results[0].boxes.xyxy.cpu().numpy().astype(int)  # shape: (N, 4)
+                boxes = results[0].boxes.xyxy.cpu().numpy().astype(int)
 
                 h, w, _ = frame_rgb.shape
 
-                # Crop and show each detected face
                 for i, (x1, y1, x2, y2) in enumerate(boxes):
                     bw, bh = x2 - x1, y2 - y1
 
@@ -143,27 +152,29 @@ class EmotionsDetection:
                     ny2 = min(h, y2)
 
                     face_crop = Image.fromarray(frame_rgb[ny1:ny2, nx1:nx2])
-
-                    emotions_report = self.pipe(face_crop)
-
-                    emo_set = set()
-                    for e in emotions_report:
-                        label = e['label']
-                        score = e['score']
-                        
-                        emotions[label].append(score)
-                        emo_set.add(label)
-
-                    no_emo = set(emotions.keys()) - emo_set
-                    for e in no_emo:
-                        emotions[e].append(0.0)
-
-                    # plot_numpy_image(f'Face{i+1} em-{pred_label}', face_crop)
+                    face_crops_batch.append(face_crop)
+                    frame_indices_batch.append(frame_count)
 
                 frame_count += 1
                 pbar.update(1)
 
-            cap.release()
+        cap.release()
+
+        for label in labels:
+            emotions[label] = [0.0] * total_frames
+
+        if len(face_crops_batch) > 0:
+            logger.info(f"Processing {len(face_crops_batch)} faces in batches...")
+            
+            emotions_reports = self.pipe(face_crops_batch)
+            
+            for idx, emotions_report in enumerate(emotions_reports):
+                frame_idx = frame_indices_batch[idx]
+                
+                for e in emotions_report:
+                    emotions[e['label']][frame_idx] = e['score']
+
+        return emotions
 
 
 class SpeakerFeatures:
@@ -253,7 +264,7 @@ class SpeakerFeatures:
         print(f"{actual_speaker_embedding.shape=}")
 
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        speaker_probs = np.zeros(total_frames + 1, dtype=np.float32)
+        speaker_probs = np.zeros(total_frames, dtype=np.float32)
 
         for start, end in tqdm(intervals, desc="Processing intervals"):
             # ensure shifted indices are within bounds
