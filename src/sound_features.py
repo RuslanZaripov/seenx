@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from logger import Logger
 
-logger = Logger(show=True).get_logger('seenx')
+logger = Logger(show=True).get_logger()
 
 
 def sound_features_pipeline(audio_file_path: str, fps: int = 1) -> pd.DataFrame:

@@ -3,7 +3,7 @@ import pandas as pd
 from logger import Logger
 from bs4 import BeautifulSoup
 
-logger = Logger(show=True).get_logger('seenx')
+logger = Logger(show=True).get_logger()
 
 
 def extract_chart_content(html_content):

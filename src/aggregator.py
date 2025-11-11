@@ -7,7 +7,7 @@ from zoom_features import zoom_features_pipeline
 from parse_retention import parse_retention
 
 
-logger = Logger(show=True).get_logger('seenx')
+logger = Logger(show=True).get_logger()
 
 def aggregate():
     logger.info("Starting aggregation of features")

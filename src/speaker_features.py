@@ -10,7 +10,7 @@ from shot_segmentation import batch_shot_segmentation
 from PIL import Image
 from logger import Logger
 
-logger = Logger(show=True).get_logger('seenx')
+logger = Logger(show=True).get_logger()
 
 
 def resize_or_crop_center_np(frame: np.ndarray, size: int = 640) -> np.ndarray:
