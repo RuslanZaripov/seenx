@@ -44,6 +44,7 @@ def sound_features_pipeline(audio_file_path, fps=24):
 
     # Combine features into a DataFrame
     features = pd.DataFrame({
+        'frame_index': np.arange(rms.shape[1]),
         'rms': rms.flatten(),
         'zcr': zcr.flatten(),
         'centroid': centroid.flatten(),
