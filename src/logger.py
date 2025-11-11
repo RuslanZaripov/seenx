@@ -2,62 +2,49 @@ import logging
 import os
 import sys
 
-FORMATTER = logging.Formatter(
-    "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+FORMATTER = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 LOG_FILE = os.path.join(os.getcwd(), "logfile.log")
 
 
 class Logger:
     """
-        Class for logging behaviour of data exporting - object of ExportingTool class
+    Singleton Logger class for unified logging across modules.
     """
 
-    def __init__(self, show: bool) -> None:
-        """
-            Re-defined __init__ method which sets show parametr
+    _instance = None
 
-        Args:
-            show (bool): if set all logs will be shown in terminal
-        """
-        self.show = show
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
 
-    def get_console_handler(self) -> logging.StreamHandler:
-        """
-            Class method the aim of which is getting a console handler to show logs on terminal
+    def __init__(self, show: bool = False):
+        if self._initialized:
+            return  # Prevent reinitialization
+        
+        self._initialized = True
 
-        Returns:
-            logging.StreamHandler: handler object for streaming output through terminal
-        """
-        console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setFormatter(FORMATTER)
-        return console_handler
+        self.log_level = logging.DEBUG
+        self.logger = logging.getLogger("seenx")
+        self.logger.setLevel(self.log_level)
+        self.logger.handlers.clear()
+        if show:
+            self.logger.addHandler(self._get_console_handler())
+        self.logger.addHandler(self._get_file_handler())
+        self.logger.propagate = False
 
-    def get_file_handler(self) -> logging.FileHandler:
-        """
-            Class method the aim of which is getting a file handler to write logs in file LOG_FILE
+    def _get_console_handler(self):
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(FORMATTER)
+        handler.setLevel(self.log_level)
+        return handler
 
-        Returns:
-            logging.FileHandler: handler object for streaming output through std::filestream
-        """
-        file_handler = logging.FileHandler(LOG_FILE, mode='w')
-        file_handler.setFormatter(FORMATTER)
-        return file_handler
+    def _get_file_handler(self):
+        handler = logging.FileHandler(LOG_FILE, mode="w")
+        handler.setFormatter(FORMATTER)
+        handler.setLevel(self.log_level)
+        return handler
 
-    def get_logger(self, name):
-        """
-            Class method which creates logger with certain name
-
-        Args:
-            logger_name (str): name for logger
-
-        Returns:
-            logger: object of Logger class
-        """
-        logger = logging.getLogger(name)
-        if not logger.hasHandlers():  # Check if handlers are already added
-            logger.setLevel(logging.DEBUG)
-            if self.show:
-                logger.addHandler(self.get_console_handler())
-            logger.addHandler(self.get_file_handler())
-            logger.propagate = False
-        return logger
+    def get_logger(self):
+        return self.logger

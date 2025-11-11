@@ -99,7 +99,7 @@ def parse_retention(html_file_path):
     
     logger.info(f"Extracted {len(coordinates)} from {html_file_path}")
 
-    data = pd.DataFrame({"time": times, "value": percentages})
+    data = pd.DataFrame({"time": times, "retention": percentages})
 
     data["time"] = pd.to_timedelta(data["time"], unit="s")
     data = data.set_index("time")

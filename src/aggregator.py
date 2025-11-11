@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 from logger import Logger
 from speaker_features import speaker_features_pipeline
@@ -25,7 +26,7 @@ def aggregate():
     
     logger.info("Extracting sound features")
     sound_features = sound_features_pipeline(
-        video_path = '/kaggle/input/seenx-videos/youtube-video.mp4'
+        audio_file_path = '/kaggle/input/seenx-videos/youtube-video.mp4'
     )
 
     logger.info("Extracting zoom features")
@@ -42,33 +43,36 @@ def aggregate():
     # zoom features are framewise, match zoom features to retention timepoints
     # add then to retention dataframe
 
-    total_duration_seconds = retention.index[-1].total_seconds()
-    speaker_features_resampled = speaker_features.reindex(
-        index = pd.timedelta_range(
-            start = pd.Timedelta(seconds=0),
-            end = pd.Timedelta(seconds=total_duration_seconds),
-            freq = '1s'
+    # map speaker_features columns by windows of length len(speaker_features.index) / total_duration_seconds
+    # i want speaker features column equal to length of retention index
+    speaker_features_mapped = pd.DataFrame(index=retention.index)
+    for col in speaker_features.columns:
+        speaker_features_mapped[col] = np.interp(
+            np.linspace(0, len(speaker_features.index), len(retention.index)),
+            np.arange(len(speaker_features.index)),
+            speaker_features[col].values
         )
-    ).interpolate()
 
-    sound_features_resampled = sound_features.reindex(
-        index = pd.timedelta_range(
-            start = pd.Timedelta(seconds=0),
-            end = pd.Timedelta(seconds=total_duration_seconds),
-            freq = '1s'
+    sound_features_mapped = pd.DataFrame(index=retention.index)
+    for col in sound_features.columns:
+        sound_features_mapped[col] = np.interp(
+            np.linspace(0, len(sound_features.index), len(retention.index)),
+            np.arange(len(sound_features.index)),
+            sound_features[col].values
         )
-    ).interpolate()
+    # same for zoom features
+    zoom_features_mapped = pd.DataFrame(index=retention.index)
+    for col in zoom_features.columns:
+        zoom_features_mapped[col] = np.interp(
+            np.linspace(0, len(zoom_features.index), len(retention.index)),
+            np.arange(len(zoom_features.index)),
+            zoom_features[col].values
+        )   
 
-    zoom_features_resampled = zoom_features.reindex(
-        index = pd.timedelta_range(
-            start = pd.Timedelta(seconds=0),
-            end = pd.Timedelta(seconds=total_duration_seconds),
-            freq = '1s'
-        )
-    ).interpolate()
-
-    aggregated = retention.join(speaker_features_resampled, how='left', rsuffix='_speaker')
-    aggregated = aggregated.join(sound_features_resampled, how='left', rsuffix='_sound')
-    aggregated = aggregated.join(zoom_features_resampled, how='left', rsuffix='_zoom')
+    aggregated = pd.concat([
+        retention, 
+        speaker_features_mapped, 
+        sound_features_mapped, 
+        zoom_features_mapped], axis=1)
     
-    aggregated.to_csv('data.csv', index=True)    
+    return aggregated
