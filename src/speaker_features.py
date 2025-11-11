@@ -88,15 +88,8 @@ class EmotionsDetection:
             device=device)
 
     def get_emotions(self, video_path, speaker_probs):
-        emotions = {
-            'angry': [],
-            'happy': [],
-            'sad': [],
-            'disgust': [],
-            'neutral': [],
-            'fear': [],
-            'surprise': [],
-        }
+        labels = list(self.pipe.model.config.label2id.keys())
+        emotions = {label: [] for label in labels}
 
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
@@ -107,7 +100,7 @@ class EmotionsDetection:
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         max_frames = min(total_frames, 100)
 
-        with tqdm(total=max_frames, desc="Processing video frames", unit="frame") as pbar:
+        with tqdm(total=total_frames, desc="Processing video frames", unit="frame") as pbar:
             while True:
                 if speaker_probs[frame_count] < 0.1:
                     frame_count += 1
@@ -260,7 +253,7 @@ class SpeakerFeatures:
         print(f"{actual_speaker_embedding.shape=}")
 
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        speaker_probs = np.zeros(total_frames, dtype=np.float32)
+        speaker_probs = np.zeros(total_frames + 1, dtype=np.float32)
 
         for start, end in tqdm(intervals, desc="Processing intervals"):
             # ensure shifted indices are within bounds
