@@ -21,13 +21,16 @@ def aggregate(
         html_file_path=html_path,
     )
 
+    if retention.index.name is None:
+        retention.index.name = "time"
+
     logger.info("Extracting speaker features")
     speaker_features = speaker_features_pipeline(
-        speaker_image_path=config["speaker_image_path"],
+        speaker_image_path=config.get("speaker_image_path"),
         video_path=video_path,
-        yolo_model_path=config["face_detector"],
-        arcface_weight_file=config["face_embedder"],
-        transnet_weights_path=config["shot_segmentor"],
+        yolo_model_path=config.get("face_detector"),
+        arcface_weight_file=config.get("face_embedder"),
+        transnet_weights_path=config.get("shot_segmentor"),
     )
 
     logger.info("Extracting sound features")
@@ -40,38 +43,23 @@ def aggregate(
         gpu=False,
     )
 
-    # See how much seconds retention data consist of
+    def map_features_to_retention_index(retention, features):
+        mapped = pd.DataFrame(index=retention.index)
+        for col in features.columns:
+            mapped[col] = np.interp(
+                np.linspace(0, len(features.index), len(retention.index)),
+                np.arange(len(features.index)),
+                features[col].values,
+            )
+        return mapped
 
-    # speaker features are framewise, match speaker features to retention timepoints
-    # sound features are also framewise, match sound features to retention timepoints
-    # zoom features are framewise, match zoom features to retention timepoints
-    # add then to retention dataframe
+    speaker_features_mapped = map_features_to_retention_index(
+        retention, speaker_features
+    )
 
-    # map speaker_features columns by windows of length len(speaker_features.index) / total_duration_seconds
-    # i want speaker features column equal to length of retention index
-    speaker_features_mapped = pd.DataFrame(index=retention.index)
-    for col in speaker_features.columns:
-        speaker_features_mapped[col] = np.interp(
-            np.linspace(0, len(speaker_features.index), len(retention.index)),
-            np.arange(len(speaker_features.index)),
-            speaker_features[col].values,
-        )
+    sound_features_mapped = map_features_to_retention_index(retention, sound_features)
 
-    sound_features_mapped = pd.DataFrame(index=retention.index)
-    for col in sound_features.columns:
-        sound_features_mapped[col] = np.interp(
-            np.linspace(0, len(sound_features.index), len(retention.index)),
-            np.arange(len(sound_features.index)),
-            sound_features[col].values,
-        )
-    # same for zoom features
-    zoom_features_mapped = pd.DataFrame(index=retention.index)
-    for col in zoom_features.columns:
-        zoom_features_mapped[col] = np.interp(
-            np.linspace(0, len(zoom_features.index), len(retention.index)),
-            np.arange(len(zoom_features.index)),
-            zoom_features[col].values,
-        )
+    zoom_features_mapped = map_features_to_retention_index(retention, zoom_features)
 
     aggregated = pd.concat(
         [
@@ -84,3 +72,16 @@ def aggregate(
     )
 
     return aggregated
+
+
+if __name__ == "__main__":
+    config = Config("configs/local.json")
+
+    aggregated_df = aggregate(
+        html_path="static/htmls/faceless_youtube_channel_ideas.html",
+        video_path="static/test.mp4",
+        audio_path="static/test.mp4",
+        config=config,
+    )
+
+    aggregated_df.to_csv("static/data.csv", index=True)

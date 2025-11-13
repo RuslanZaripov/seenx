@@ -108,6 +108,7 @@ class EmotionsDetection:
                 ):
                     frame_count += 1
                     pbar.update(1)
+                    face_screen_ratios.append(0.0)
                     for _emotion in emotions.keys():
                         emotions[_emotion].append(0.0)
                     continue
@@ -301,17 +302,21 @@ def speaker_features_pipeline(
     speaker_probs = speaker_feature_extractor.get_speaker_probs(
         shot_bounds, speaker_image_path, video_path
     )
+    logger.info(f"Speaker probs length: {len(speaker_probs)}")
 
     emotions, face_screen_ratios = emotion_detector.get_emotions(
         video_path, speaker_probs
     )
+    logger.info(f"Face screen ratios length: {len(face_screen_ratios)}")
+    for emotion in emotions:
+        logger.info(f'Emotion "{emotion}" length: {len(emotions[emotion])}')
 
     logger.info("Extracting frame quality features")
     frame_features = get_frame_features(video_path)
+    for feature in frame_features:
+        logger.info(f'Frame feature "{feature}" length: {len(frame_features[feature])}')
 
-    total_frames = len(speaker_probs)
     data = {
-        "frame_index": np.arange(total_frames),
         "speaker_prob": speaker_probs,
         **{emotion: emotions[emotion] for emotion in emotions},
         **{feature: frame_features[feature] for feature in frame_features},

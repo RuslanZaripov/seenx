@@ -28,3 +28,7 @@ https://ts.gluon.ai/stable/tutorials/forecasting/quick_start_tutorial.html
 ## Faces 
 
 - https://github.com/YotamNitzan/ID-disentanglement/tree/main
+
+## Copilot coding agent
+
+- https://docs.github.com/en/copilot/concepts/agents/coding-agent/about-coding-agent

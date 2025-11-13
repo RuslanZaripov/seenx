@@ -1,0 +1,6 @@
+{
+    "speaker_image_path": "static/speaker_face.png",
+    "face_detector": "weights/yolov12l-face.pt",
+    "face_embedder": "weights/arcface_weights.h5",
+    "shot_segmentor": "weights/transnetv2-pytorch-weights.pth"
+}

@@ -77,11 +77,8 @@ def make_empty(new_w, new_h):
 
 
 def zoom_features_pipeline(
-        video_file_path,  
-        frame_shape=(320, 320),
-        gpu=False, 
-        show=False
-    ) -> pd.DataFrame:
+    video_file_path, frame_shape=(320, 320), gpu=False, show=False
+) -> pd.DataFrame:
 
     rect_w, rect_h = frame_shape
 
@@ -139,10 +136,10 @@ def zoom_features_pipeline(
         progress_bar.update(1)
 
         frame = frame[rect_y : rect_y + rect_h, rect_x : rect_x + rect_w]
-        
+
         # make frame writable for OpenCV drawing
         frame = np.ascontiguousarray(frame.copy())
-        
+
         next_frame = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
 
         if gpu:
@@ -197,7 +194,7 @@ def zoom_features_pipeline(
             zooms.append(zoom_in_factor)
             if len(zooms) > 10:
                 zooms.pop(0)
-            
+
             with out:
                 clear_output(wait=True)
                 plt.figure(figsize=(6, 6))
@@ -208,15 +205,21 @@ def zoom_features_pipeline(
                     for x in range(0, w, step):
                         fx, fy = flow[y, x]
                         plt.arrow(
-                            x, y, fx, fy,
-                            color='lime', head_width=2, head_length=2, length_includes_head=True
+                            x,
+                            y,
+                            fx,
+                            fy,
+                            color="lime",
+                            head_width=2,
+                            head_length=2,
+                            length_includes_head=True,
                         )
 
                 plt.title(
                     f"Frame: {frame_num} | Zoom: {np.mean(zooms):.3f} | "
                     f"Angle: {np.mean(angs):.0f} | Mag: {np.mean(mags):.4f}"
                 )
-                plt.axis('off')
+                plt.axis("off")
                 plt.show()
 
         prvs = next_frame
@@ -234,7 +237,7 @@ def zoom_features_pipeline(
 
     if show:
         out.close()
-        
+
     df = pd.DataFrame(data)
     return df
 

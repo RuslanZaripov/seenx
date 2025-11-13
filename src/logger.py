@@ -22,7 +22,7 @@ class Logger:
     def __init__(self, show: bool = False):
         if self._initialized:
             return  # Prevent reinitialization
-        
+
         self._initialized = True
 
         self.log_level = logging.DEBUG
