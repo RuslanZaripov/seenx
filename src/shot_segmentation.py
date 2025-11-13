@@ -8,6 +8,7 @@ from logger import Logger
 
 logger = Logger(show=True).get_logger()
 
+
 def predictions_to_scenes(predictions: np.ndarray, threshold: float = 0.5):
     predictions = (predictions > threshold).astype(np.uint8)
 
@@ -30,8 +31,8 @@ def predictions_to_scenes(predictions: np.ndarray, threshold: float = 0.5):
 
 
 def batch_shot_segmentation(
-    video_path: str, 
-    transnet_weights_path: str, 
+    video_path: str,
+    transnet_weights_path: str,
     batch_size: int = 1000,
 ) -> np.ndarray:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -40,7 +41,9 @@ def batch_shot_segmentation(
         raise FileNotFoundError(f"Video file {video_path} not found")
 
     if not os.path.exists(transnet_weights_path):
-        raise FileNotFoundError(f"TransNetV2 weights not found at {transnet_weights_path}")
+        raise FileNotFoundError(
+            f"TransNetV2 weights not found at {transnet_weights_path}"
+        )
 
     model = TransNetV2()
     state_dict = torch.load(transnet_weights_path, map_location=device)
@@ -54,8 +57,10 @@ def batch_shot_segmentation(
     fps = cap.get(cv2.CAP_PROP_FPS)
     frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     duration = frame_count / fps if fps > 0 else 0
-    
-    logger.info(f"Video FPS: {fps}, Total Frames: {frame_count}, Duration: {duration:.2f} seconds")
+
+    logger.info(
+        f"Video FPS: {fps}, Total Frames: {frame_count}, Duration: {duration:.2f} seconds"
+    )
 
     all_frame_pred = np.zeros(frame_count, dtype=np.float32)
 
@@ -67,7 +72,7 @@ def batch_shot_segmentation(
         batch_tensor = torch.tensor(np.stack(frames_batch), dtype=torch.uint8)
         single_pred, _ = model(batch_tensor.unsqueeze(0).to(device))
         preds = torch.sigmoid(single_pred).cpu().numpy().squeeze(0)
-        all_frame_pred[frame_indices] = preds[:len(frame_indices)].flatten()
+        all_frame_pred[frame_indices] = preds[: len(frame_indices)].flatten()
 
     with torch.no_grad():
         pbar = tqdm(total=frame_count, desc="Processing frames", unit="frame")

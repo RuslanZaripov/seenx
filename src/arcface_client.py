@@ -13,6 +13,7 @@ from tensorflow.keras.layers import (
     Dense,
 )
 
+
 # pylint: disable=too-few-public-methods
 class ArcFaceClient(FacialRecognition):
     """
@@ -40,12 +41,12 @@ def load_model(
     arcface_model = BatchNormalization(momentum=0.9, epsilon=2e-5)(arcface_model)
     arcface_model = Dropout(0.4)(arcface_model)
     arcface_model = Flatten()(arcface_model)
-    arcface_model = Dense(512, activation=None, use_bias=True, kernel_initializer="glorot_normal")(
-        arcface_model
-    )
-    embedding = BatchNormalization(momentum=0.9, epsilon=2e-5, name="embedding", scale=True)(
-        arcface_model
-    )
+    arcface_model = Dense(
+        512, activation=None, use_bias=True, kernel_initializer="glorot_normal"
+    )(arcface_model)
+    embedding = BatchNormalization(
+        momentum=0.9, epsilon=2e-5, name="embedding", scale=True
+    )(arcface_model)
     model = Model(inputs, embedding, name=base_model.name)
 
     # ---------------------------------------
@@ -69,7 +70,12 @@ def ResNet34() -> Model:
 
     x = ZeroPadding2D(padding=1, name="conv1_pad")(img_input)
     x = Conv2D(
-        64, 3, strides=1, use_bias=False, kernel_initializer="glorot_normal", name="conv1_conv"
+        64,
+        3,
+        strides=1,
+        use_bias=False,
+        kernel_initializer="glorot_normal",
+        name="conv1_conv",
     )(x)
     x = BatchNormalization(axis=3, epsilon=2e-5, momentum=0.9, name="conv1_bn")(x)
     x = PReLU(shared_axes=[1, 2], name="conv1_prelu")(x)
@@ -98,7 +104,9 @@ def block1(x, filters, kernel_size=3, stride=1, conv_shortcut=True, name=None):
     else:
         shortcut = x
 
-    x = BatchNormalization(axis=bn_axis, epsilon=2e-5, momentum=0.9, name=name + "_1_bn")(x)
+    x = BatchNormalization(
+        axis=bn_axis, epsilon=2e-5, momentum=0.9, name=name + "_1_bn"
+    )(x)
     x = ZeroPadding2D(padding=1, name=name + "_1_pad")(x)
     x = Conv2D(
         filters,
@@ -108,7 +116,9 @@ def block1(x, filters, kernel_size=3, stride=1, conv_shortcut=True, name=None):
         use_bias=False,
         name=name + "_1_conv",
     )(x)
-    x = BatchNormalization(axis=bn_axis, epsilon=2e-5, momentum=0.9, name=name + "_2_bn")(x)
+    x = BatchNormalization(
+        axis=bn_axis, epsilon=2e-5, momentum=0.9, name=name + "_2_bn"
+    )(x)
     x = PReLU(shared_axes=[1, 2], name=name + "_1_prelu")(x)
 
     x = ZeroPadding2D(padding=1, name=name + "_2_pad")(x)
@@ -120,7 +130,9 @@ def block1(x, filters, kernel_size=3, stride=1, conv_shortcut=True, name=None):
         use_bias=False,
         name=name + "_2_conv",
     )(x)
-    x = BatchNormalization(axis=bn_axis, epsilon=2e-5, momentum=0.9, name=name + "_3_bn")(x)
+    x = BatchNormalization(
+        axis=bn_axis, epsilon=2e-5, momentum=0.9, name=name + "_3_bn"
+    )(x)
 
     x = Add(name=name + "_add")([shortcut, x])
     return x

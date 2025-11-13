@@ -1,0 +1,6 @@
+{
+    "speaker_image_path": "/kaggle/input/seenx-videos/speaker_face.png",
+    "face_detector": "/kaggle/working/yolov12l-face.pt",
+    "face_embedder": "/kaggle/working/arcface_weights.h5",
+    "shot_segmentor": "/kaggle/input/seenx-videos/transnetv2-pytorch-weights.pth"
+}

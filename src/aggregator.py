@@ -1,39 +1,43 @@
 import numpy as np
 import pandas as pd
 from logger import Logger
-from speaker_features import speaker_features_pipeline
+from speaker_features import speaker_features_pipeline, get_frame_features
 from sound_features import sound_features_pipeline
 from zoom_features import zoom_features_pipeline
 from parse_retention import parse_retention
-
+from config import Config
 
 logger = Logger(show=True).get_logger()
 
-def aggregate():
-    logger.info("Starting aggregation of features")
+
+def aggregate(
+    html_path: str,
+    video_path: str,
+    audio_path: str,
+    config: Config,
+):
+    logger.info("Parsing audience retention data")
     retention = parse_retention(
-        html_file_path = '/kaggle/input/seenx-videos/faceless_youtube_channel_ideas.html'
+        html_file_path=html_path,
     )
-    
+
     logger.info("Extracting speaker features")
     speaker_features = speaker_features_pipeline(
-        speaker_image_path = '/kaggle/input/seenx-videos/speaker_face.png', 
-        video_path = '/kaggle/input/seenx-videos/youtube-video.mp4',
-        yolo_model_path = '/kaggle/working/yolov12l-face.pt',
-        arcface_weight_file = '/kaggle/working/arcface_weights.h5',
-        transnet_weights_path = '/kaggle/input/seenx-videos/transnetv2-pytorch-weights.pth',
+        speaker_image_path=config["speaker_image_path"],
+        video_path=video_path,
+        yolo_model_path=config["face_detector"],
+        arcface_weight_file=config["face_embedder"],
+        transnet_weights_path=config["shot_segmentor"],
     )
-    
+
     logger.info("Extracting sound features")
-    sound_features = sound_features_pipeline(
-        audio_file_path = '/kaggle/input/seenx-videos/youtube-video.mp4'
-    )
+    sound_features = sound_features_pipeline(audio_file_path=audio_path)
 
     logger.info("Extracting zoom features")
     zoom_features = zoom_features_pipeline(
-        video_file_path = '/kaggle/input/seenx-videos/youtube-video.mp4',
-        show=False, 
-        gpu=False
+        video_file_path=video_path,
+        show=False,
+        gpu=False,
     )
 
     # See how much seconds retention data consist of
@@ -50,7 +54,7 @@ def aggregate():
         speaker_features_mapped[col] = np.interp(
             np.linspace(0, len(speaker_features.index), len(retention.index)),
             np.arange(len(speaker_features.index)),
-            speaker_features[col].values
+            speaker_features[col].values,
         )
 
     sound_features_mapped = pd.DataFrame(index=retention.index)
@@ -58,7 +62,7 @@ def aggregate():
         sound_features_mapped[col] = np.interp(
             np.linspace(0, len(sound_features.index), len(retention.index)),
             np.arange(len(sound_features.index)),
-            sound_features[col].values
+            sound_features[col].values,
         )
     # same for zoom features
     zoom_features_mapped = pd.DataFrame(index=retention.index)
@@ -66,13 +70,17 @@ def aggregate():
         zoom_features_mapped[col] = np.interp(
             np.linspace(0, len(zoom_features.index), len(retention.index)),
             np.arange(len(zoom_features.index)),
-            zoom_features[col].values
-        )   
+            zoom_features[col].values,
+        )
 
-    aggregated = pd.concat([
-        retention, 
-        speaker_features_mapped, 
-        sound_features_mapped, 
-        zoom_features_mapped], axis=1)
-    
+    aggregated = pd.concat(
+        [
+            retention,
+            speaker_features_mapped,
+            sound_features_mapped,
+            zoom_features_mapped,
+        ],
+        axis=1,
+    )
+
     return aggregated
