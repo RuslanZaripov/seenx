@@ -9,7 +9,9 @@ from logger import Logger
 logger = Logger(show=True).get_logger()
 
 
-def sound_features_pipeline(audio_file_path: str, fps: int = 1) -> pd.DataFrame:
+def sound_features_pipeline(
+    audio_file_path: str, fps: int = 1, prefix: str = ""
+) -> pd.DataFrame:
     y, sr = librosa.load(audio_file_path, sr=None)
     print(f"Audio shape: {y.shape}, Sample rate: {sr}")
 
@@ -31,11 +33,10 @@ def sound_features_pipeline(audio_file_path: str, fps: int = 1) -> pd.DataFrame:
     # Combine features into a DataFrame
     features = pd.DataFrame(
         {
-            "frame_index": np.arange(rms.shape[1]),
-            "rms": rms.flatten(),
-            "zcr": zcr.flatten(),
-            "centroid": centroid.flatten(),
-            "rolloff": rolloff.flatten(),
+            f"{prefix}rms": rms.flatten(),
+            f"{prefix}zcr": zcr.flatten(),
+            f"{prefix}centroid": centroid.flatten(),
+            f"{prefix}rolloff": rolloff.flatten(),
         }
     )
 

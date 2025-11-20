@@ -9,6 +9,7 @@ from arcface_client import ArcFaceClient
 from shot_segmentation import batch_shot_segmentation
 from PIL import Image
 from logger import Logger
+from config import Config
 
 logger = Logger(show=True).get_logger()
 
@@ -65,12 +66,14 @@ def get_frame_features(video_path: str) -> dict:
 class EmotionsDetection:
     def __init__(
         self,
-        yolo_model_path: str,
+        config: Config,
         device: str | torch.device = "cpu",
-        speaker_threshold: float = 0.9,
         batch_size: int = 32,
     ):
-        self.face_detector = YOLO(yolo_model_path)
+        self.face_detector = YOLO(config.get("face_detector"))
+        self.pose_model = YOLO(config.get("pose_model"))
+        self.speaker_threshold = config.get("speaker_probability_threshold")
+        self.keypoint_conf_threshold = 0.3
         self.pipe = pipeline(
             "image-classification",
             model="dima806/facial_emotions_image_detection",
@@ -78,13 +81,13 @@ class EmotionsDetection:
             batch_size=batch_size,
         )
         self.batch_size = batch_size
-        self.speaker_threshold = speaker_threshold
+
+    def use_pose_model(self, frame_rgb: np.ndarray) -> np.ndarray:
+        results = self.pose_model(frame_rgb, verbose=False)
+        keypoints = results[0].keypoints.data.cpu().numpy()
+        return keypoints
 
     def get_emotions(self, video_path, speaker_probs):
-        labels = list(self.pipe.model.config.label2id.keys())
-        emotions = {label: [] for label in labels}
-        face_screen_ratios = []
-
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
             print("Error: Cannot open video file.")
@@ -93,6 +96,11 @@ class EmotionsDetection:
         frame_count = 0
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
+        labels = list(self.pipe.model.config.label2id.keys())
+        emotions = {label: [] for label in labels}
+        face_screen_ratios = []
+
+        frame_keypoints = []
         face_crops_batch = []
         frame_indices_batch = []
 
@@ -118,6 +126,9 @@ class EmotionsDetection:
                 )
                 results = self.face_detector(frame_rgb, verbose=False)
                 boxes = results[0].boxes.xyxy.cpu().numpy().astype(int)
+
+                keypoints = self.use_pose_model(frame_rgb)
+                frame_keypoints.append(keypoints)
 
                 mean_area = (
                     np.mean([(y2 - y1) * (x2 - x1) for (x1, y1, x2, y2) in boxes])
@@ -172,13 +183,46 @@ class EmotionsDetection:
                 for e in emotions_report:
                     emotions[e["label"]][frame_idx] = e["score"]
 
-        return emotions, face_screen_ratios
+        logger.info(f"Keypoints collected for {len(frame_keypoints)} frames.")
+        logger.info("Calculating motion speeds...")
+        motion_speeds = [0.0] * total_frames
+        for i in range(1, len(frame_keypoints)):
+            prev_keypoints = frame_keypoints[i - 1]
+            curr_keypoints = frame_keypoints[i]
+
+            if (
+                prev_keypoints.shape[0] == 0
+                or curr_keypoints.shape[0] == 0
+                or prev_keypoints.shape[1] != curr_keypoints.shape[1]
+            ):
+                motion_speeds[i] = 0.0
+                continue
+
+            prev_kp = prev_keypoints[0]
+            curr_kp = curr_keypoints[0]
+
+            valid_prev = prev_kp[prev_kp[:, 2] > self.keypoint_conf_threshold][:, :2]
+            valid_curr = curr_kp[curr_kp[:, 2] > self.keypoint_conf_threshold][:, :2]
+
+            if len(valid_prev) == 0 or len(valid_curr) == 0:
+                motion_speeds[i] = 0.0
+                continue
+
+            min_len = min(len(valid_prev), len(valid_curr))
+            valid_prev = valid_prev[:min_len]
+            valid_curr = valid_curr[:min_len]
+
+            distances = np.linalg.norm(valid_curr - valid_prev, axis=1)
+            motion_speed = float(np.mean(distances))
+            motion_speeds[i] = motion_speed
+
+        return emotions, face_screen_ratios, motion_speeds
 
 
 class SpeakerFeatures:
-    def __init__(self, yolo_model_path: str, arcface_weight_file: str):
-        self.face_detector = YOLO(yolo_model_path)
-        self.arcface_client = ArcFaceClient(arcface_weight_file)
+    def __init__(self, config: Config):
+        self.face_detector = YOLO(config.get("face_detector"))
+        self.arcface_client = ArcFaceClient(config.get("face_embedder"))
 
     def get_embeddings(self, frame_rgb: np.ndarray):
         results = self.face_detector(frame_rgb, verbose=False)
@@ -278,20 +322,17 @@ class SpeakerFeatures:
 
 
 def speaker_features_pipeline(
-    speaker_image_path: str,
     video_path: str,
-    yolo_model_path: str,
-    arcface_weight_file: str,
-    transnet_weights_path: str,
+    config: Config,
 ) -> pd.DataFrame:
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    speaker_feature_extractor = SpeakerFeatures(yolo_model_path, arcface_weight_file)
+    speaker_feature_extractor = SpeakerFeatures(config)
 
-    emotion_detector = EmotionsDetection(yolo_model_path, device=device)
+    emotion_detector = EmotionsDetection(config, device=device)
 
-    shot_bounds = batch_shot_segmentation(video_path, transnet_weights_path)
+    shot_bounds = batch_shot_segmentation(video_path, config.get("shot_segmentor"))
 
     if shot_bounds.ndim != 2 or shot_bounds.shape[1] != 2:
         raise ValueError(f"Expected shot_bounds shape (N, 2), got {shot_bounds.shape}")
@@ -300,11 +341,11 @@ def speaker_features_pipeline(
         raise ValueError("No shot boundaries detected in the video.")
 
     speaker_probs = speaker_feature_extractor.get_speaker_probs(
-        shot_bounds, speaker_image_path, video_path
+        shot_bounds, config.get("speaker_image_path"), video_path
     )
     logger.info(f"Speaker probs length: {len(speaker_probs)}")
 
-    emotions, face_screen_ratios = emotion_detector.get_emotions(
+    emotions, face_screen_ratios, motion_speeds = emotion_detector.get_emotions(
         video_path, speaker_probs
     )
     logger.info(f"Face screen ratios length: {len(face_screen_ratios)}")
@@ -321,6 +362,7 @@ def speaker_features_pipeline(
         **{emotion: emotions[emotion] for emotion in emotions},
         **{feature: frame_features[feature] for feature in frame_features},
         "face_screen_ratio": face_screen_ratios,
+        "motion_speed": motion_speeds,
     }
     df = pd.DataFrame(data)
     return df

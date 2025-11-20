@@ -32,3 +32,10 @@ https://ts.gluon.ai/stable/tutorials/forecasting/quick_start_tutorial.html
 ## Copilot coding agent
 
 - https://docs.github.com/en/copilot/concepts/agents/coding-agent/about-coding-agent
+
+## Human Movement Speed
+
+- Joint velocity and aceleration 
+
+- https://github.com/CMU-Perceptual-Computing-Lab/openpose
+- https://github.com/open-mmlab/mmpose/tree/main/projects/yolox_pose
