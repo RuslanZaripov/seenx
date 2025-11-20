@@ -1,4 +1,5 @@
 import numpy as np
+import argparse
 import pandas as pd
 from logger import Logger
 from speaker_features import speaker_features_pipeline, get_frame_features
@@ -97,12 +98,18 @@ def aggregate(
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-h", "--html_path", type=str, required=True)
+    parser.add_argument("-v", "--video_path", type=str, required=True)
+
+    args = parser.parse_args()
+
     config = Config("configs/local.json")
 
     aggregated_df = aggregate(
-        html_path="static/htmls/faceless_youtube_channel_ideas.html",
-        video_path="static/test.mp4",
-        audio_path="static/test.mp4",
+        html_path=args.html_path,
+        video_path=args.video_path,
+        audio_path=args.video_path,
         config=config,
     )
 

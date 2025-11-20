@@ -1,10 +1,10 @@
 {
     "speaker_image_path": "static/speaker_face.png",
-    "face_detector": "weights/yolov12l-face.pt",
-    "face_embedder": "weights/arcface_weights.h5",
-    "shot_segmentor": "weights/transnetv2-pytorch-weights.pth",
+    "face_detector": "static/weights/yolov12l-face.pt",
+    "face_embedder": "static/weights/arcface_weights.h5",
+    "shot_segmentor": "static/weights/transnetv2-pytorch-weights.pth",
     "whisper_model_size": "tiny",
-    "pose_model": "weights/yolo11n-pose.pt",
+    "pose_model": "static/weights/yolo11n-pose.pt",
     "speaker_probability_threshold": 0.9,
     "source_separation_dir": "static/separated/htdemucs/output_audio"
 }

@@ -166,3 +166,16 @@ def parse_retention(html_file_path, points_per_second: float = 1.0):
     logger.info(f"Resampled to {n_samples} samples ({points_per_second} pts/sec)")
 
     return data
+
+
+if __name__ == "__main__":
+    import sys
+
+    if len(sys.argv) != 2:
+        print("Usage: python parse_retention.py <path_to_html_file>")
+        sys.exit(1)
+
+    html_file_path = sys.argv[1]
+    retention_data = parse_retention(html_file_path, points_per_second=2.0)
+
+    print(retention_data)
