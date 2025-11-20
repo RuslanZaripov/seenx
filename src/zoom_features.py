@@ -226,7 +226,7 @@ def zoom_features_pipeline(
 
         data.append(
             {
-                "frame": frame_num,
+                # "frame": frame_num,
                 "mag": mean_mag,
                 "ang": mean_ang,
                 "zoom": zoom_in_factor,

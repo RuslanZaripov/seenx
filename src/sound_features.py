@@ -13,10 +13,11 @@ def sound_features_pipeline(
     audio_file_path: str, fps: int = 1, prefix: str = ""
 ) -> pd.DataFrame:
     y, sr = librosa.load(audio_file_path, sr=None)
-    print(f"Audio shape: {y.shape}, Sample rate: {sr}")
+    logger.info(f"Audio file: {audio_file_path} shape: {y.shape}, sample rate: {sr}")
 
     frame_length = sr // fps
     hop_length = sr // fps
+    logger.info(f"Extracting features with {frame_length=}, {hop_length=}")
 
     # Root Mean Square (RMS) Energy: A measure of the signal’s loudness over time.
     rms = librosa.feature.rms(y=y, frame_length=frame_length, hop_length=hop_length)
