@@ -101,6 +101,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-h", "--html_path", type=str, required=True)
     parser.add_argument("-v", "--video_path", type=str, required=True)
+    parser.add_argument("-o", "--output_path", type=str, required=True)
 
     args = parser.parse_args()
 
@@ -113,4 +114,4 @@ if __name__ == "__main__":
         config=config,
     )
 
-    aggregated_df.to_csv("static/data.csv", index=True)
+    aggregated_df.to_csv(args.output_path, index=True)
