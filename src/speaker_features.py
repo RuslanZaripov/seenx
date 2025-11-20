@@ -40,6 +40,11 @@ def get_frame_features(video_path: str) -> dict:
         print("Error: Cannot open video file.")
         exit()
 
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    # tqdm progress bar
+    pbar = tqdm(total=total_frames, desc="Processing frames", unit="frame")
+
     while True:
         ret, frame = cap.read()
         if not ret:
@@ -52,13 +57,13 @@ def get_frame_features(video_path: str) -> dict:
         laplacian = cv2.Laplacian(gray, cv2.CV_64F)
         sharpness = float(laplacian.var())
 
-        features = {
-            "brightness": brightness,
-            "sharpness": sharpness,
-        }
+        frame_features["brightness"].append(brightness)
+        frame_features["sharpness"].append(sharpness)
 
-        for key, value in features.items():
-            frame_features[key].append(value)
+        pbar.update(1)
+
+    pbar.close()
+    cap.release()
 
     return frame_features
 
