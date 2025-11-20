@@ -99,7 +99,7 @@ def aggregate(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-h", "--html_path", type=str, required=True)
+    parser.add_argument("-r", "--retention_path", type=str, required=True)
     parser.add_argument("-v", "--video_path", type=str, required=True)
     parser.add_argument("-o", "--output_path", type=str, required=True)
 
@@ -108,7 +108,7 @@ if __name__ == "__main__":
     config = Config("configs/local.json")
 
     aggregated_df = aggregate(
-        html_path=args.html_path,
+        html_path=args.retention_path,
         video_path=args.video_path,
         audio_path=args.video_path,
         config=config,
