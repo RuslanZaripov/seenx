@@ -102,10 +102,11 @@ if __name__ == "__main__":
     parser.add_argument("-r", "--retention_path", type=str, required=True)
     parser.add_argument("-v", "--video_path", type=str, required=True)
     parser.add_argument("-o", "--output_path", type=str, required=True)
+    parser.add_argument("-c", "--config_path", type=str, required=False)
 
     args = parser.parse_args()
 
-    config = Config("configs/local.json")
+    config = Config(config_path=args.config_path)
 
     aggregated_df = aggregate(
         html_path=args.retention_path,
