@@ -1,6 +1,8 @@
 # NOTE: demucs should be installed
 
 import io
+import os
+import shutil
 import sys
 import select
 import subprocess as sp
@@ -28,7 +30,7 @@ int24 = False  # output as int24 wavs, unused if 'mp3' is True.
 
 
 def mp4_to_wav(input_path, output_path):
-    command = f"ffmpeg -i {input_path} -ab 160k -ac 2 -ar 44100 -vn {output_path}"
+    command = f"ffmpeg -y -i {input_path} -ab 160k -ac 2 -ar 44100 -vn {output_path}"
     sp.call(command, shell=True)
 
 
@@ -86,7 +88,7 @@ def separate(files: List[str], outp: str):
     # logger.info("Going to separate the files:")
     # logger.info("\n".join(files))
 
-    logger.info("With command: ", " ".join(cmd))
+    logger.info(f"With command: " + " ".join(cmd + files))
     p = sp.Popen(cmd + files, stdout=sp.PIPE, stderr=sp.PIPE)
     copy_process_streams(p)
     p.wait()
@@ -95,26 +97,37 @@ def separate(files: List[str], outp: str):
 
 
 def combine(separate_folder: str) -> Tuple[str, str]:
-    vocal_path = f"{separate_folder}/htdemucs/output_audio/vocals.mp3"
-    audio1 = AudioSegment.from_mp3(f"{separate_folder}/htdemucs/output_audio/other.mp3")
-    audio2 = AudioSegment.from_mp3(f"{separate_folder}/htdemucs/output_audio/drums.mp3")
-    audio3 = AudioSegment.from_mp3(f"{separate_folder}/htdemucs/output_audio/bass.mp3")
+    vocal_path = f"{separate_folder}/vocals.mp3"
+    audio1 = AudioSegment.from_mp3(f"{separate_folder}/other.mp3")
+    audio2 = AudioSegment.from_mp3(f"{separate_folder}/drums.mp3")
+    audio3 = AudioSegment.from_mp3(f"{separate_folder}/bass.mp3")
     audio = audio1.overlay(audio2).overlay(audio3)
-    music_path = f"{separate_folder}/htdemucs/output_audio/mixed.mp3"
+    music_path = f"{separate_folder}/mixed.mp3"
     audio.export(music_path, format="mp3")
     return music_path, vocal_path
 
 
 def get_vocal_music_features(audio_path: str, config: Config):
     wav_file_path = "output.wav"
-    outp = config.get("source_separation_dir")
+
     logger.info(f"Converting mp4 {audio_path} to wav {wav_file_path}")
     mp4_to_wav(audio_path, wav_file_path)
+
     logger.info(f"Separating {wav_file_path} into music and vocals to {outp}")
+    outp = config.get("source_separation_dir")
     separate([wav_file_path], outp=outp)
-    music_path, vocal_path = combine(outp)
+
+    filename, ext = os.path.splitext(os.path.basename(audio_path))
+    sepearated_folder = f"{outp}/htdemucs/{filename}"
+    music_path, vocal_path = combine(sepearated_folder)
+
     vocal_features = sound_features_pipeline(vocal_path, fps=1, prefix="vocal_")
     music_features = sound_features_pipeline(music_path, fps=1, prefix="music_")
+
+    # cleanup
+    os.remove(wav_file_path)
+    shutil.rmtree(sepearated_folder)
+
     return music_features, vocal_features
 
 
