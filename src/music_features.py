@@ -8,7 +8,7 @@ from logger import Logger
 from config import Config
 from pathlib import Path
 from pydub import AudioSegment
-from typing import Dict, Tuple, Optional, IO
+from typing import Dict, List, Tuple, Optional, IO
 from sound_features import sound_features_pipeline
 
 logger = Logger(show=True).get_logger()
@@ -68,7 +68,7 @@ def copy_process_streams(process: sp.Popen):
             std.flush()
 
 
-def separate(files, outp):
+def separate(files: List[str], outp: str):
     cmd = ["python3", "-m", "demucs.separate", "-o", str(outp), "-n", model]
     if mp3:
         cmd += ["--mp3", f"--mp3-bitrate={mp3_rate}"]
@@ -105,11 +105,13 @@ def combine(separate_folder: str) -> Tuple[str, str]:
     return music_path, vocal_path
 
 
-def get_vocal_music_features(video_path: str, config: Config):
+def get_vocal_music_features(audio_path: str, config: Config):
     wav_file_path = "output.wav"
     outp = config.get("source_separation_dir")
-    mp4_to_wav(video_path, wav_file_path)
-    separate(inp=[wav_file_path], outp=outp)
+    logger.info(f"Converting mp4 {audio_path} to wav {wav_file_path}")
+    mp4_to_wav(audio_path, wav_file_path)
+    logger.info(f"Separating {wav_file_path} into music and vocals to {outp}")
+    separate([wav_file_path], outp=outp)
     music_path, vocal_path = combine(outp)
     vocal_features = sound_features_pipeline(vocal_path, fps=1, prefix="vocal_")
     music_features = sound_features_pipeline(music_path, fps=1, prefix="music_")

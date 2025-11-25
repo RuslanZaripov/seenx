@@ -40,7 +40,9 @@ def aggregate(
     sound_features = sound_features_pipeline(audio_file_path=audio_path)
 
     logger.info("Extracting music features")
-    music_features, vocal_features = get_vocal_music_features(config=config)
+    music_features, vocal_features = get_vocal_music_features(
+        audio_path=audio_path, config=config
+    )
 
     logger.info("Extracting zoom features")
     zoom_features = zoom_features_pipeline(
