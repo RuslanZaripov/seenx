@@ -1,5 +1,5 @@
 {
-    "speaker_image_path": "static/speaker_face.png",
+    "speaker_image_path": "static/misc/speaker_face.png",
     "face_detector": "static/weights/yolov12l-face.pt",
     "face_embedder": "static/weights/arcface_weights.h5",
     "shot_segmentor": "static/weights/transnetv2-pytorch-weights.pth",

@@ -1,6 +1,7 @@
 import re
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from logger import Logger
 from bs4 import BeautifulSoup
 
@@ -177,5 +178,12 @@ if __name__ == "__main__":
 
     html_file_path = sys.argv[1]
     retention_data = parse_retention(html_file_path, points_per_second=2.0)
+
+    retention_data.plot(title="Audience Retention")
+    plt.xlabel("Time")
+    plt.ylabel("Retention (%)")
+    plt.grid()
+    plt.show()
+    plt.close()
 
     print(retention_data)
