@@ -117,7 +117,7 @@ def get_vocal_music_features(audio_path: str, config: Config):
     logger.info(f"Separating {wav_file_path} into music and vocals to {outp}")
     separate([wav_file_path], outp=outp)
 
-    filename, ext = os.path.splitext(os.path.basename(audio_path))
+    filename, _ = os.path.splitext(os.path.basename(wav_file_path))
     sepearated_folder = f"{outp}/htdemucs/{filename}"
     music_path, vocal_path = combine(sepearated_folder)
 
