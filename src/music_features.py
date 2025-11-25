@@ -113,8 +113,8 @@ def get_vocal_music_features(audio_path: str, config: Config):
     logger.info(f"Converting mp4 {audio_path} to wav {wav_file_path}")
     mp4_to_wav(audio_path, wav_file_path)
 
-    logger.info(f"Separating {wav_file_path} into music and vocals to {outp}")
     outp = config.get("source_separation_dir")
+    logger.info(f"Separating {wav_file_path} into music and vocals to {outp}")
     separate([wav_file_path], outp=outp)
 
     filename, ext = os.path.splitext(os.path.basename(audio_path))
