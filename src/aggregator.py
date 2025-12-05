@@ -36,7 +36,7 @@ def aggregate(
         # create retention data frame with index of sec freq
         logger.info("Creating empty audience retention data")
         retention_index = pd.to_timedelta(
-            np.arange(0, int(video_duration) + 1, config.retention.sec_freq), unit="s"
+            np.arange(0, int(video_duration) + 1, 1), unit="s"
         )
         retention = pd.DataFrame(index=retention_index)
     else:
