@@ -1,5 +1,6 @@
 import math
 import pandas as pd
+from utils import get_video_duration
 from config import Config
 import whisper
 
@@ -23,6 +24,12 @@ def collect_wps(video_path: str, config: Config) -> pd.DataFrame:
 
         for second in range(start, end):
             wps_frame.append({"time": second, "wps": wps})
+
+    # if wps_frame is empty, add rows for each second of the video with wps = 0
+    if not wps_frame:
+        video_duration = math.ceil(get_video_duration(video_path))
+        for second in range(0, video_duration):
+            wps_frame.append({"time": second, "wps": 0})
 
     wps_frame = pd.DataFrame(wps_frame)
     wps_frame["time"] = pd.to_timedelta(wps_frame["time"], unit="s")

@@ -1,4 +1,3 @@
-import cv2
 import numpy as np
 import argparse
 import pandas as pd
@@ -9,20 +8,10 @@ from sound_features import sound_features_pipeline
 from zoom_features import zoom_features_pipeline
 from parse_retention import parse_retention
 from transcribe import collect_wps
+from utils import get_video_duration
 from config import Config
 
 logger = Logger(show=True).get_logger()
-
-
-def get_video_duration(video_path: str) -> float:
-    cap = cv2.VideoCapture(video_path)
-    if not cap.isOpened():
-        raise ValueError(f"Cannot open video file: {video_path}")
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
-    duration = frame_count / fps
-    cap.release()
-    return duration
 
 
 def aggregate(
