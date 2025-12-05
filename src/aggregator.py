@@ -1,3 +1,4 @@
+import cv2
 import numpy as np
 import argparse
 import pandas as pd
@@ -13,16 +14,36 @@ from config import Config
 logger = Logger(show=True).get_logger()
 
 
+def get_video_duration(video_path: str) -> float:
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        raise ValueError(f"Cannot open video file: {video_path}")
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+    duration = frame_count / fps
+    cap.release()
+    return duration
+
+
 def aggregate(
-    html_path: str,
     video_path: str,
     audio_path: str,
     config: Config,
+    html_path: str = None,
 ):
-    logger.info("Parsing audience retention data")
-    retention = parse_retention(
-        html_file_path=html_path,
-    )
+    video_duration = get_video_duration(video_path)
+    if html_path is None:
+        # create retention data frame with index of sec freq
+        logger.info("Creating empty audience retention data")
+        retention_index = pd.to_timedelta(
+            np.arange(0, int(video_duration) + 1, config.retention.sec_freq), unit="s"
+        )
+        retention = pd.DataFrame(index=retention_index)
+    else:
+        logger.info("Parsing audience retention data")
+        retention = parse_retention(
+            html_file_path=html_path,
+        )
 
     # take only until 2 second included
     # retention = retention[retention.index <= pd.to_timedelta("2s")]
@@ -101,7 +122,7 @@ def aggregate(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-r", "--retention_path", type=str, required=True)
+    parser.add_argument("-r", "--retention_path", type=str, required=False)
     parser.add_argument("-v", "--video_path", type=str, required=True)
     parser.add_argument("-o", "--output_path", type=str, required=True)
     parser.add_argument("-c", "--config_path", type=str, required=False)
