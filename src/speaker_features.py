@@ -1,6 +1,7 @@
 import cv2
 import torch
 import numpy as np
+import easyocr
 import pandas as pd
 from tqdm import tqdm
 from ultralytics import YOLO
@@ -77,6 +78,7 @@ class EmotionsDetection:
     ):
         self.face_detector = YOLO(config.get("face_detector"))
         self.pose_model = YOLO(config.get("pose_model"))
+        self.ocr_model = easyocr.Reader(["en"])
         self.speaker_threshold = config.get("speaker_probability_threshold")
         self.keypoint_conf_threshold = 0.3
         self.pipe = pipeline(
@@ -108,6 +110,7 @@ class EmotionsDetection:
         frame_keypoints = []
         face_crops_batch = []
         frame_indices_batch = []
+        text_probs = []
 
         with tqdm(total=total_frames, desc="Extracting faces", unit="frame") as pbar:
             while True:
@@ -131,6 +134,15 @@ class EmotionsDetection:
                 )
                 results = self.face_detector(frame_rgb, verbose=False)
                 boxes = results[0].boxes.xyxy.cpu().numpy().astype(int)
+
+                # OCR detection
+                results = self.ocr_model.readtext(frame_rgb)
+                mean_conf = (
+                    np.mean([conf for _, _, conf in results])
+                    if len(results) > 0
+                    else 0.0
+                )
+                text_probs.append(mean_conf)
 
                 keypoints = self.use_pose_model(frame_rgb)
                 frame_keypoints.append(keypoints)
@@ -221,7 +233,7 @@ class EmotionsDetection:
             motion_speed = float(np.mean(distances))
             motion_speeds[i] = motion_speed
 
-        return emotions, face_screen_ratios, motion_speeds
+        return emotions, face_screen_ratios, motion_speeds, text_probs
 
 
 class SpeakerFeatures:
@@ -350,8 +362,8 @@ def speaker_features_pipeline(
     )
     logger.info(f"Speaker probs length: {len(speaker_probs)}")
 
-    emotions, face_screen_ratios, motion_speeds = emotion_detector.get_emotions(
-        video_path, speaker_probs
+    emotions, face_screen_ratios, motion_speeds, text_probs = (
+        emotion_detector.get_emotions(video_path, speaker_probs)
     )
     logger.info(f"Face screen ratios length: {len(face_screen_ratios)}")
     for emotion in emotions:
@@ -368,6 +380,7 @@ def speaker_features_pipeline(
         **{feature: frame_features[feature] for feature in frame_features},
         "face_screen_ratio": face_screen_ratios,
         "motion_speed": motion_speeds,
+        "text_prob": text_probs,
     }
     df = pd.DataFrame(data)
     return df
