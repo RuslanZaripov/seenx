@@ -202,7 +202,9 @@ class SpeakerFeaturesExtractor:
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         speaker_probs = np.zeros(total_frames, dtype=np.float32)
 
-        for start, end in tqdm(intervals, desc="Processing intervals"):
+        for start, end in tqdm(
+            intervals, desc="Determining speaker probabilities for shots"
+        ):
             s = min(max(start + shift, 0), end)
             e = max(min(end - shift, total_frames - 1), start)
 
@@ -274,7 +276,7 @@ class SpeakerFeaturesExtractor:
 
             if ctx.face_box is not None:
                 x1, y1, x2, y2 = ctx.face_box
-                ctx.face_crop = frame_rgb[y1:y2, x1:x2]
+                ctx.face_crop = Image.fromarray(frame_rgb[y1:y2, x1:x2])
 
             # Lazy dependencies
             if any(f.requires_keypoints for f in features):
@@ -292,9 +294,15 @@ class SpeakerFeaturesExtractor:
         cap.release()
         pbar.close()
 
-        # Collect results
-        data = {f.name: f.finalize() for f in features}
-        data["speaker_prob"] = speaker_probs
+        data = {}
+        for f in features:
+            result = f.finalize()
+            if isinstance(result, dict):
+                data.update(result)
+            else:
+                data[f.name] = result
+
+        data["speaker_prob"] = speaker_probs.tolist()
 
         return data
 
@@ -313,5 +321,6 @@ def speaker_features_pipeline(
 
     data.update(frame_features)
 
+    print(f"{data}")
     df = pd.DataFrame(data)
     return df

@@ -151,9 +151,9 @@ class EmotionFeature(FeatureExtractor):
 
     def _process_batch(self):
         results = self.pipe(self.batch_faces)
-        for idx, res in zip(self.batch_frame_indices, results):
-            for emotion, score in res.items():
-                self.values[emotion][idx] = float(score)
+        for idx, emotions_report in zip(self.batch_frame_indices, results):
+            for e in emotions_report:
+                self.values[e["label"]][idx] = float(e["score"])
 
         self.batch_faces = []
         self.batch_frame_indices = []
