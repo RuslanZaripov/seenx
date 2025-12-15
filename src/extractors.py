@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import easyocr
 import torch
-from transformers import pipeline
+from transformers import CLIPImageProcessor, CLIPTokenizer, pipeline
 from tqdm import tqdm
 from config import Config
 from shot_segmentation import batch_shot_segmentation
@@ -178,20 +178,33 @@ class CinematicFeature(FeatureExtractor):
     name = "cinematic"
 
     def __init__(self, config: Config):
-        self.processor = CLIPProcessor.from_pretrained(config.get("clip_model"))
+        self.processor = CLIPImageProcessor.from_pretrained(config.get("clip_model"))
+        self.tokenizer = CLIPTokenizer.from_pretrained(config.get("clip_model"))
         self.model = CLIPModel.from_pretrained(config.get("clip_model"))
 
     def clip_score(self, frame_rgb):
         inputs = self.processor(
-            text=["a cinematic high quality photo"],
             images=frame_rgb,
             return_tensors="pt",
-            padding=True,
         )
-        outputs = self.model(**inputs)
-        logits_per_image = outputs.logits_per_image
-        probs = logits_per_image.softmax(dim=1)
-        return probs[0][0].item()
+        text_inputs = self.tokenizer(
+            ["a cinematic frame", "not a cinematic frame"],
+            padding=True,
+            return_tensors="pt",
+        )
+
+        with torch.no_grad():
+            image_features = self.model.get_image_features(**inputs)
+            text_features = self.model.get_text_features(**text_inputs)
+            image_features = image_features / image_features.norm(
+                p=2, dim=-1, keepdim=True
+            )
+            text_features = text_features / text_features.norm(
+                p=2, dim=-1, keepdim=True
+            )
+            logits_per_image = torch.matmul(image_features, text_features.T)
+            probs = logits_per_image.softmax(dim=-1)
+        return probs[0, 0].item()
 
     def init_storage(self, total_frames: int):
         self.values = [0.0] * total_frames
