@@ -177,41 +177,87 @@ class EmotionFeature(FeatureExtractor):
 class CinematicFeature(FeatureExtractor):
     name = "cinematic"
 
-    def __init__(self, config: Config):
-        self.processor = CLIPImageProcessor.from_pretrained(config.get("clip_model"))
-        self.tokenizer = CLIPTokenizer.from_pretrained(config.get("clip_model"))
-        self.model = CLIPModel.from_pretrained(config.get("clip_model"))
+    def __init__(
+        self,
+        config: Config,
+        device: torch.device,
+        batch_size: int = 32,
+        use_fp16: bool = True,
+    ):
+        self.device = device
+        self.batch_size = batch_size
+        self.use_fp16 = use_fp16 and device.type == "cuda"
 
-    def clip_score(self, frame_rgb):
-        inputs = self.processor(
-            images=frame_rgb,
-            return_tensors="pt",
-        )
-        text_inputs = self.tokenizer(
-            ["a cinematic frame", "not a cinematic frame"],
-            padding=True,
-            return_tensors="pt",
+        self.processor = CLIPProcessor.from_pretrained(
+            config.get("clip_model"),
+            use_fast=False,
         )
 
-        with torch.no_grad():
-            image_features = self.model.get_image_features(**inputs)
-            text_features = self.model.get_text_features(**text_inputs)
-            image_features = image_features / image_features.norm(
-                p=2, dim=-1, keepdim=True
-            )
-            text_features = text_features / text_features.norm(
-                p=2, dim=-1, keepdim=True
-            )
-            logits_per_image = torch.matmul(image_features, text_features.T)
-            probs = logits_per_image.softmax(dim=-1)
-        return probs[0, 0].item()
+        self.model = (
+            CLIPModel.from_pretrained(config.get("clip_model")).to(device).eval()
+        )
+
+        # Fixed prompts
+        self.texts = ["a cinematic frame", "not a cinematic frame"]
+
+    # -------------------- lifecycle --------------------
 
     def init_storage(self, total_frames: int):
         self.values = [0.0] * total_frames
 
+        # buffers for batching
+        self._frames: list[np.ndarray] = []
+        self._indices: list[int] = []
+
+        # cache text embeddings once
+        with torch.no_grad():
+            text_inputs = self.processor(
+                text=self.texts,
+                return_tensors="pt",
+                padding=True,
+            ).to(self.device)
+
+            self.text_features = self.model.get_text_features(**text_inputs)
+            self.text_features = self.text_features / self.text_features.norm(
+                dim=-1, keepdim=True
+            )
+
     def process_frame(self, ctx: FrameContext):
-        score = self.clip_score(ctx.frame_rgb)
-        self.values[ctx.frame_idx] = float(score)
+        # just cache
+        self._frames.append(ctx.frame_rgb)
+        self._indices.append(ctx.frame_idx)
 
     def finalize(self):
+        if not self._frames:
+            return self.values
+
+        for start in range(0, len(self._frames), self.batch_size):
+            end = start + self.batch_size
+            batch_frames = self._frames[start:end]
+            batch_indices = self._indices[start:end]
+
+            inputs = self.processor(
+                images=batch_frames,
+                return_tensors="pt",
+            )
+
+            inputs = {k: v.to(self.device) for k, v in inputs.items()}
+
+            with torch.no_grad(), torch.cuda.amp.autocast(enabled=self.use_fp16):
+                image_features = self.model.get_image_features(**inputs)
+                image_features = image_features / image_features.norm(
+                    dim=-1, keepdim=True
+                )
+
+                logits = image_features @ self.text_features.T
+                probs = logits.softmax(dim=-1)
+
+            # store results
+            for i, frame_idx in enumerate(batch_indices):
+                self.values[frame_idx] = float(probs[i, 0].item())
+
+        # free memory
+        self._frames.clear()
+        self._indices.clear()
+
         return self.values
