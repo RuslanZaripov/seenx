@@ -5,7 +5,6 @@ import easyocr
 import pandas as pd
 from tqdm import tqdm
 from ultralytics import YOLO
-from transformers import pipeline
 from arcface_client import ArcFaceClient
 from shot_segmentation import batch_shot_segmentation
 from typing import List
@@ -19,6 +18,7 @@ from extractors import (
     TextProbFeature,
     MotionSpeedFeature,
     EmotionFeature,
+    CinematicFeature,
 )
 
 logger = Logger(show=True).get_logger()
@@ -87,22 +87,16 @@ class SpeakerFeaturesExtractor:
         self,
         config: Config,
         device: str | torch.device = "cpu",
-        batch_size: int = 32,
+        batch_size: int = 64,
     ):
+        self.device = device
         self.arcface_client = ArcFaceClient(config.get("face_embedder"))
         self.face_detector = YOLO(config.get("face_detector"))
         self.pose_model = YOLO(config.get("pose_model"))
-        self.ocr_model = easyocr.Reader(["en"])
         self.speaker_threshold = config.get("speaker_probability_threshold")
         self.keypoint_conf_threshold = 0.3
-        self.pipe = pipeline(
-            "image-classification",
-            model="dima806/facial_emotions_image_detection",
-            use_fast=False,
-            device=device,
-            batch_size=batch_size,
-        )
         self.batch_size = batch_size
+        self.config = config
 
     def use_face_detector(self, frame_rgb: np.ndarray) -> np.ndarray:
         results = self.face_detector(frame_rgb, verbose=False)
@@ -225,9 +219,10 @@ class SpeakerFeaturesExtractor:
     def build_feature_registry(self):
         return [
             FaceScreenRatioFeature(),
-            TextProbFeature(self.ocr_model),
+            TextProbFeature(),
             MotionSpeedFeature(self.keypoint_conf_threshold),
-            EmotionFeature(self.pipe, self.batch_size),
+            EmotionFeature(self.batch_size, device=self.device),
+            CinematicFeature(self.config),
         ]
 
     def get_speaker_features(self, video_path, config: Config, existing_features=None):
@@ -286,6 +281,7 @@ class SpeakerFeaturesExtractor:
             for f in features:
                 if f.requires_face and ctx.face_box is None:
                     continue
+
                 f.process_frame(ctx)
 
             frame_idx += 1
@@ -321,6 +317,5 @@ def speaker_features_pipeline(
 
     data.update(frame_features)
 
-    print(f"{data}")
     df = pd.DataFrame(data)
     return df

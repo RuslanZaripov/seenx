@@ -1,9 +1,13 @@
-from abc import ABC, abstractmethod
-import numpy as np
 import cv2
+import numpy as np
+import easyocr
+import torch
+from transformers import pipeline
 from tqdm import tqdm
 from config import Config
 from shot_segmentation import batch_shot_segmentation
+from abc import ABC, abstractmethod
+from transformers import CLIPModel, CLIPProcessor
 
 
 class FrameContext:
@@ -60,8 +64,8 @@ class FaceScreenRatioFeature(FeatureExtractor):
 class TextProbFeature(FeatureExtractor):
     name = "text_prob"
 
-    def __init__(self, ocr_model):
-        self.ocr = ocr_model
+    def __init__(self):
+        self.ocr = easyocr.Reader(["en"])
 
     def init_storage(self, total_frames: int):
         self.values = [0.0] * total_frames
@@ -125,8 +129,14 @@ class EmotionFeature(FeatureExtractor):
     name = "emotion"
     requires_face = True
 
-    def __init__(self, pipe, batch_size: int):
-        self.pipe = pipe
+    def __init__(self, batch_size: int, device: str | torch.device = "cpu"):
+        self.pipe = pipeline(
+            "image-classification",
+            model="dima806/facial_emotions_image_detection",
+            use_fast=False,
+            device=device,
+            batch_size=batch_size,
+        )
         self.batch_size = batch_size
 
     def init_storage(self, total_frames: int):
@@ -161,4 +171,34 @@ class EmotionFeature(FeatureExtractor):
     def finalize(self):
         if self.batch_faces:
             self._process_batch()
+        return self.values
+
+
+class CinematicFeature(FeatureExtractor):
+    name = "cinematic"
+
+    def __init__(self, config: Config):
+        self.processor = CLIPProcessor.from_pretrained(config.get("clip_model"))
+        self.model = CLIPModel.from_pretrained(config.get("clip_model"))
+
+    def clip_score(self, frame_rgb):
+        inputs = self.processor(
+            text=["a cinematic high quality photo"],
+            images=frame_rgb,
+            return_tensors="pt",
+            padding=True,
+        )
+        outputs = self.model(**inputs)
+        logits_per_image = outputs.logits_per_image
+        probs = logits_per_image.softmax(dim=1)
+        return probs[0][0].item()
+
+    def init_storage(self, total_frames: int):
+        self.values = [0.0] * total_frames
+
+    def process_frame(self, ctx: FrameContext):
+        score = self.clip_score(ctx.frame_rgb)
+        self.values[ctx.frame_idx] = float(score)
+
+    def finalize(self):
         return self.values
