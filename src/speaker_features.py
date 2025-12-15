@@ -222,7 +222,7 @@ class SpeakerFeaturesExtractor:
             TextProbFeature(),
             MotionSpeedFeature(self.keypoint_conf_threshold),
             EmotionFeature(self.batch_size, device=self.device),
-            CinematicFeature(self.config),
+            CinematicFeature(self.config, device=self.device),
         ]
 
     def get_speaker_features(self, video_path, config: Config, existing_features=None):
