@@ -12,6 +12,14 @@ from typing import List
 from PIL import Image
 from logger import Logger
 from config import Config
+from abc import ABC, abstractmethod
+from extractors import (
+    FrameContext,
+    FaceScreenRatioFeature,
+    TextProbFeature,
+    MotionSpeedFeature,
+    EmotionFeature,
+)
 
 logger = Logger(show=True).get_logger()
 
@@ -212,169 +220,81 @@ class SpeakerFeaturesExtractor:
         cap.release()
         return speaker_probs, actual_speaker_embedding
 
+    def build_feature_registry(self):
+        return [
+            FaceScreenRatioFeature(),
+            TextProbFeature(self.ocr_model),
+            MotionSpeedFeature(self.keypoint_conf_threshold),
+            EmotionFeature(self.pipe, self.batch_size),
+        ]
+
     def get_speaker_features(self, video_path, config: Config, existing_features=None):
+        existing_features = set(existing_features or [])
+
         shot_bounds = batch_shot_segmentation(video_path, config.get("shot_segmentor"))
-
-        if shot_bounds.ndim != 2 or shot_bounds.shape[1] != 2:
-            raise ValueError(
-                f"Expected shot_bounds shape (N, 2), got {shot_bounds.shape}"
-            )
-
-        if shot_bounds.shape[0] == 0:
-            raise ValueError("No shot boundaries detected in the video.")
-
         speaker_probs, actual_speaker_embedding = self.get_speaker_probs(
             shot_bounds, video_path, config
         )
 
         cap = cv2.VideoCapture(video_path)
-        if not cap.isOpened():
-            print("Error: Cannot open video file.")
-            exit()
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-        frame_count = 0
-        frame_keypoints = []
-        frame_face_crops = []
-        frame_indices = []
+        features = [
+            f for f in self.build_feature_registry() if f.name not in existing_features
+        ]
 
-        face_screen_ratios = [0.0] * total_frames
-        text_probs = [0.0] * total_frames
-        motion_speeds = [0.0] * total_frames
-        labels = list(self.pipe.model.config.label2id.keys())
-        emotions = {label: [] for label in labels}
-        for label in labels:
-            emotions[label] = [0.0] * total_frames
+        for f in features:
+            f.init_storage(total_frames)
 
-        pbar = tqdm(
-            total=total_frames, desc="Extracting Speaker Features", unit="frame"
-        )
+        ctx = FrameContext()
+        frame_idx = 0
 
-        all_emotions = all(emotion not in existing_features for emotion in emotions)
+        pbar = tqdm(total=total_frames, desc="Extracting features")
 
         while True:
-            frame_rgb = self.read_and_process_frame(cap, frame_count)
+            frame_rgb = self.read_and_process_frame(cap, frame_idx)
             if frame_rgb is None:
                 break
 
-            if (
-                frame_count < len(speaker_probs)
-                and speaker_probs[frame_count] < self.speaker_threshold
-            ):
-                frame_count += 1
+            if speaker_probs[frame_idx] < self.speaker_threshold:
+                frame_idx += 1
                 pbar.update(1)
                 continue
 
-            # Face Box
-            _, box = self.find_speaker(frame_rgb, actual_speaker_embedding)
+            # Initialize context
+            ctx.frame_rgb = frame_rgb
+            ctx.frame_shape = frame_rgb.shape
+            ctx.frame_idx = frame_idx
+            ctx.face_box = None
+            ctx.face_crop = None
+            ctx.keypoints = None
 
-            if not all_emotions:
-                # Face Crop
-                nx1, ny1, nx2, ny2 = box
-                face_crop = Image.fromarray(frame_rgb[ny1:ny2, nx1:nx2])
-                frame_face_crops.append(face_crop)
+            # Speaker face (shared)
+            _, ctx.face_box = self.find_speaker(frame_rgb, actual_speaker_embedding)
 
-            if not "face_screen_ratio" in existing_features:
-                # Face Screen Ratio
-                face_screen_ratio = self.box_area(box) / (
-                    frame_rgb.shape[0] * frame_rgb.shape[1]
-                )
-                face_screen_ratios[frame_count] = face_screen_ratio
+            if ctx.face_box is not None:
+                x1, y1, x2, y2 = ctx.face_box
+                ctx.face_crop = frame_rgb[y1:y2, x1:x2]
 
-            if not "motion_speed" in existing_features:
-                # Keypoints
-                keypoints = self.use_pose_model(frame_rgb)
-                frame_keypoints.append(keypoints)
+            # Lazy dependencies
+            if any(f.requires_keypoints for f in features):
+                ctx.keypoints = self.use_pose_model(frame_rgb)
 
-            if not "text_prob" in existing_features:
-                # OCR detection
-                results = self.ocr_model.readtext(frame_rgb)
-                mean_conf = (
-                    np.mean([conf for _, _, conf in results])
-                    if len(results) > 0
-                    else 0.0
-                )
-                text_probs[frame_count] = mean_conf
+            # Run enabled features
+            for f in features:
+                if f.requires_face and ctx.face_box is None:
+                    continue
+                f.process_frame(ctx)
 
-            frame_indices.append(frame_count)
-
-            frame_count += 1
+            frame_idx += 1
             pbar.update(1)
 
         cap.release()
         pbar.close()
 
-        if len(frame_face_crops) > 0:
-            logger.info(f"Processing {len(frame_face_crops)} faces in batches...")
-
-            # batch frame crops for emotion detection
-            batch_size = self.batch_size
-            batch_count = (len(frame_face_crops) + batch_size - 1) // batch_size
-
-            for i in range(batch_count):
-                start_idx = i * batch_size
-                end_idx = min((i + 1) * batch_size, len(frame_face_crops))
-                batch_crops = frame_face_crops[start_idx:end_idx]
-
-                emotions_reports = self.pipe(batch_crops)
-
-                for i, emotions_report in enumerate(emotions_reports):
-                    report_idx = start_idx + i
-                    for e in emotions_report:
-                        emotions[e["label"]][frame_indices[report_idx]] = e["score"]
-
-        if len(frame_keypoints) > 0:
-            logger.info(f"Keypoints collected for {len(frame_keypoints)} frames.")
-
-            for i in range(1, len(frame_keypoints)):
-                prev_keypoints = frame_keypoints[i - 1]
-                curr_keypoints = frame_keypoints[i]
-
-                if (
-                    prev_keypoints.shape[0] == 0
-                    or curr_keypoints.shape[0] == 0
-                    or prev_keypoints.shape[1] != curr_keypoints.shape[1]
-                ):
-                    continue
-
-                prev_kp = prev_keypoints[0]
-                curr_kp = curr_keypoints[0]
-
-                valid_prev = prev_kp[prev_kp[:, 2] > self.keypoint_conf_threshold][
-                    :, :2
-                ]
-                valid_curr = curr_kp[curr_kp[:, 2] > self.keypoint_conf_threshold][
-                    :, :2
-                ]
-
-                if len(valid_prev) == 0 or len(valid_curr) == 0:
-                    continue
-
-                min_len = min(len(valid_prev), len(valid_curr))
-                valid_prev = valid_prev[:min_len]
-                valid_curr = valid_curr[:min_len]
-
-                distances = np.linalg.norm(valid_curr - valid_prev, axis=1)
-                motion_speed = float(np.mean(distances))
-                motion_speeds[frame_indices[i]] = motion_speed
-
-        data = {}
-
-        if not "speaker_prob" in existing_features:
-            data["speaker_prob"] = speaker_probs
-
-        if not "face_screen_ratio" in existing_features:
-            data["face_screen_ratio"] = face_screen_ratios
-
-        if not "motion_speed" in existing_features:
-            data["motion_speed"] = motion_speeds
-
-        if not "text_prob" in existing_features:
-            data["text_prob"] = text_probs
-
-        if not all_emotions:
-            for emotion in emotions:
-                data[emotion] = emotions[emotion]
+        # Collect results
+        data = {f.name: f.finalize() for f in features}
+        data["speaker_prob"] = speaker_probs
 
         return data
 
