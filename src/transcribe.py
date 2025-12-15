@@ -1,15 +1,25 @@
 import math
 import pandas as pd
 from utils import get_video_duration
+from logger import Logger
 from config import Config
 import whisper
+
+logger = Logger(show=True).get_logger()
 
 
 def count_words(text):
     return len(text.split())
 
 
-def collect_wps(video_path: str, config: Config) -> pd.DataFrame:
+def collect_wps(
+    video_path: str, config: Config, existing_features: list = []
+) -> pd.DataFrame:
+    feature_name = "wps"
+    if feature_name in existing_features:
+        logger.info(f"WPS feature already exists, skipping extraction")
+        return pd.DataFrame()
+
     model = whisper.load_model(config.get("whisper_model_size"))
     result = model.transcribe(video_path)
 
@@ -32,8 +42,9 @@ def collect_wps(video_path: str, config: Config) -> pd.DataFrame:
             wps_frame.append({"time": second, "wps": 0})
 
     wps_frame = pd.DataFrame(wps_frame)
-    wps_frame["time"] = pd.to_timedelta(wps_frame["time"], unit="s")
-    wps_frame = wps_frame.set_index("time")
+    # wps_frame["time"] = pd.to_timedelta(wps_frame["time"], unit="s")
+    # wps_frame = wps_frame.set_index("time")
+    wps_frame = wps_frame.drop(columns=["time"])
 
     return wps_frame
 
@@ -41,6 +52,5 @@ def collect_wps(video_path: str, config: Config) -> pd.DataFrame:
 if __name__ == "__main__":
     config = Config("configs/local.json")
     video_path = "static/test.mp4"
-    # print(config.get("whisper_model_size"))
     wps_df = collect_wps(video_path=video_path, config=config)
     print(wps_df)

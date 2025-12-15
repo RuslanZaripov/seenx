@@ -8,6 +8,9 @@ import matplotlib.pyplot as plt
 from ipywidgets import Output
 from moviepy.editor import VideoFileClip
 from IPython.display import display, clear_output
+from logger import Logger
+
+logger = Logger(show=True).get_logger()
 
 
 def draw_lines(frame, flow, grid=10):
@@ -77,8 +80,16 @@ def make_empty(new_w, new_h):
 
 
 def zoom_features_pipeline(
-    video_file_path, frame_shape=(320, 320), gpu=False, show=False
+    video_file_path,
+    frame_shape=(320, 320),
+    gpu=False,
+    show=False,
+    existing_features: list = [],
 ) -> pd.DataFrame:
+    feature_names = ["mag", "ang", "zoom"]
+    if all(feature in existing_features for feature in feature_names):
+        logger.info(f"Zoom features already exist, skipping extraction")
+        return pd.DataFrame()
 
     rect_w, rect_h = frame_shape
 

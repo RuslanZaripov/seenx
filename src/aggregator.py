@@ -1,10 +1,10 @@
 import numpy as np
 import argparse
 import pandas as pd
+import os
 from logger import Logger
-from speaker_features import speaker_features_pipeline, get_frame_features
-from music_features import get_vocal_music_features
-from sound_features import sound_features_pipeline
+from speaker_features import speaker_features_pipeline
+from sound_features import sound_features_pipeline, get_vocal_music_features
 from zoom_features import zoom_features_pipeline
 from parse_retention import parse_retention
 from transcribe import collect_wps
@@ -14,12 +14,7 @@ from config import Config
 logger = Logger(show=True).get_logger()
 
 
-def aggregate(
-    video_path: str,
-    audio_path: str,
-    config: Config,
-    html_path: str = None,
-):
+def get_retention(video_path: str, html_path: str = None) -> pd.DatetimeIndex:
     video_duration = get_video_duration(video_path)
     if html_path is None:
         # create retention data frame with index of sec freq
@@ -33,25 +28,47 @@ def aggregate(
         retention = parse_retention(
             html_file_path=html_path,
         )
+    return retention
 
-    # take only until 2 second included
-    # retention = retention[retention.index <= pd.to_timedelta("2s")]
 
-    if retention.index.name is None:
-        retention.index.name = "time"
+def aggregate(
+    video_path: str,
+    audio_path: str,
+    output_path: str,
+    config: Config,
+    html_path: str = None,
+):
+    existing_features = []
+    existing_df = pd.DataFrame()
+    if os.path.exists(output_path):
+        existing_df = pd.read_csv(output_path, index_col=0)
+        existing_features = existing_df.columns.tolist()
+        logger.info(f"Existing columns in output: {existing_features}")
+
+    if "retention" not in existing_features:
+        retention = get_retention(video_path=video_path, html_path=html_path)
+        # take only until 2 second included
+        # retention = retention[retention.index <= pd.to_timedelta("4s")]
+        if retention.index.name is None:
+            retention.index.name = "time"
+    else:
+        retention = existing_df[["retention"]]
 
     logger.info("Extracting speaker features")
     speaker_features = speaker_features_pipeline(
         video_path=video_path,
         config=config,
+        existing_features=existing_features,
     )
 
     logger.info("Extracting sound features")
-    sound_features = sound_features_pipeline(audio_file_path=audio_path)
+    sound_features = sound_features_pipeline(
+        audio_file_path=audio_path, existing_features=existing_features
+    )
 
     logger.info("Extracting music features")
     music_features, vocal_features = get_vocal_music_features(
-        audio_path=audio_path, config=config
+        audio_path=audio_path, config=config, existing_features=existing_features
     )
 
     logger.info("Extracting zoom features")
@@ -59,21 +76,19 @@ def aggregate(
         video_file_path=video_path,
         show=False,
         gpu=False,
+        existing_features=existing_features,
     )
 
     logger.info("Collecting words per second data")
-    wps_df = collect_wps(
+    wps_features = collect_wps(
         video_path=video_path,
         config=config,
-    )
-    retention = retention.merge(
-        wps_df,
-        how="left",
-        left_index=True,
-        right_index=True,
+        existing_features=existing_features,
     )
 
     def map_features_to_retention_index(retention, features):
+        if features.empty:
+            return pd.DataFrame(index=retention.index)
         mapped = pd.DataFrame(index=retention.index)
         for col in features.columns:
             mapped[col] = np.interp(
@@ -90,9 +105,12 @@ def aggregate(
     sound_features_mapped = map_features_to_retention_index(retention, sound_features)
 
     music_features_mapped = map_features_to_retention_index(retention, music_features)
+
     vocal_features_mapped = map_features_to_retention_index(retention, vocal_features)
 
     zoom_features_mapped = map_features_to_retention_index(retention, zoom_features)
+
+    wps_features_mapped = map_features_to_retention_index(retention, wps_features)
 
     aggregated = pd.concat(
         [
@@ -102,9 +120,11 @@ def aggregate(
             music_features_mapped,
             vocal_features_mapped,
             zoom_features_mapped,
+            wps_features_mapped,
         ],
         axis=1,
     )
+    aggregated = pd.concat([existing_df, aggregated], axis=1)
 
     return aggregated
 
@@ -121,10 +141,11 @@ if __name__ == "__main__":
     config = Config(config_path=args.config_path)
 
     aggregated_df = aggregate(
-        html_path=args.retention_path,
         video_path=args.video_path,
         audio_path=args.video_path,
+        output_path=args.output_path,
         config=config,
+        html_path=args.retention_path,
     )
 
     aggregated_df.to_csv(args.output_path, index=True)

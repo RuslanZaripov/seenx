@@ -11,7 +11,6 @@ from config import Config
 from pathlib import Path
 from pydub import AudioSegment
 from typing import Dict, List, Tuple, Optional, IO
-from sound_features import sound_features_pipeline
 
 logger = Logger(show=True).get_logger()
 
@@ -105,37 +104,3 @@ def combine(separate_folder: str) -> Tuple[str, str]:
     music_path = f"{separate_folder}/mixed.mp3"
     audio.export(music_path, format="mp3")
     return music_path, vocal_path
-
-
-def get_vocal_music_features(audio_path: str, config: Config):
-    wav_file_path = "output.wav"
-
-    logger.info(f"Converting mp4 {audio_path} to wav {wav_file_path}")
-    mp4_to_wav(audio_path, wav_file_path)
-
-    outp = config.get("source_separation_dir")
-    logger.info(f"Separating {wav_file_path} into music and vocals to {outp}")
-    separate([wav_file_path], outp=outp)
-
-    filename, _ = os.path.splitext(os.path.basename(wav_file_path))
-    sepearated_folder = f"{outp}/htdemucs/{filename}"
-    music_path, vocal_path = combine(sepearated_folder)
-
-    vocal_features = sound_features_pipeline(vocal_path, fps=1, prefix="vocal_")
-    music_features = sound_features_pipeline(music_path, fps=1, prefix="music_")
-
-    # cleanup
-    os.remove(wav_file_path)
-    shutil.rmtree(sepearated_folder)
-
-    return music_features, vocal_features
-
-
-# def get_vocal_music_features(config: Config):
-#     vocal_features = sound_features_pipeline(
-#         config.get("source_separation_dir") + "/vocals.mp3", fps=1, prefix="vocal_"
-#     )
-#     music_features = sound_features_pipeline(
-#         config.get("source_separation_dir") + "/mixed.mp3", fps=1, prefix="music_"
-#     )
-#     return music_features, vocal_features

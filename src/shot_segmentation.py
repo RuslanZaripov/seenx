@@ -75,7 +75,7 @@ def batch_shot_segmentation(
         all_frame_pred[frame_indices] = preds[: len(frame_indices)].flatten()
 
     with torch.no_grad():
-        pbar = tqdm(total=frame_count, desc="Processing frames", unit="frame")
+        pbar = tqdm(total=frame_count, desc="Running shot segmentation", unit="frame")
         while True:
             ret, frame = cap.read()
             if not ret:
