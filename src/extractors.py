@@ -160,6 +160,9 @@ class EmotionFeature(FeatureExtractor):
             self._process_batch()
 
     def _process_batch(self):
+        # move self.batch_faces to device
+        self.batch_faces = [torch.tensor(face) for face in self.batch_faces]
+        self.batch_faces = torch.stack(self.batch_faces).to(self.pipe.device)
         results = self.pipe(self.batch_faces)
         for idx, emotions_report in zip(self.batch_frame_indices, results):
             for e in emotions_report:
@@ -197,19 +200,14 @@ class CinematicFeature(FeatureExtractor):
             CLIPModel.from_pretrained(config.get("clip_model")).to(device).eval()
         )
 
-        # Fixed prompts
         self.texts = ["a cinematic frame", "not a cinematic frame"]
-
-    # -------------------- lifecycle --------------------
 
     def init_storage(self, total_frames: int):
         self.values = [0.0] * total_frames
 
-        # buffers for batching
         self._frames: list[np.ndarray] = []
         self._indices: list[int] = []
 
-        # cache text embeddings once
         with torch.no_grad():
             text_inputs = self.processor(
                 text=self.texts,
@@ -223,7 +221,6 @@ class CinematicFeature(FeatureExtractor):
             )
 
     def process_frame(self, ctx: FrameContext):
-        # just cache
         self._frames.append(ctx.frame_rgb)
         self._indices.append(ctx.frame_idx)
 
@@ -243,7 +240,7 @@ class CinematicFeature(FeatureExtractor):
 
             inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
-            with torch.no_grad(), torch.cuda.amp.autocast(enabled=self.use_fp16):
+            with torch.no_grad(), torch.autocast(enabled=self.use_fp16):
                 image_features = self.model.get_image_features(**inputs)
                 image_features = image_features / image_features.norm(
                     dim=-1, keepdim=True
@@ -252,11 +249,9 @@ class CinematicFeature(FeatureExtractor):
                 logits = image_features @ self.text_features.T
                 probs = logits.softmax(dim=-1)
 
-            # store results
             for i, frame_idx in enumerate(batch_indices):
                 self.values[frame_idx] = float(probs[i, 0].item())
 
-        # free memory
         self._frames.clear()
         self._indices.clear()
 
