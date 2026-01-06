@@ -155,11 +155,15 @@ class SpeakerFeaturesExtractor:
 
         while count < self.batch_size and curr_frame_idx < len(speaker_probs):
             if speaker_probs[curr_frame_idx] >= self.speaker_threshold:
+                curr_frame_idx += 1
                 continue
+
+            frame = self.read_and_process_frame(cap, curr_frame_idx)
+            frames.append(frame)
+            frame_indices.append(curr_frame_idx)
+
             curr_frame_idx += 1
             count += 1
-            frames.append(self.read_and_process_frame(cap, curr_frame_idx))
-            frame_indices.append(curr_frame_idx)
 
         return frames, frame_indices, curr_frame_idx
 
