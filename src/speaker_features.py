@@ -300,8 +300,8 @@ class SpeakerFeaturesExtractor:
             FaceScreenRatioFeature(),
             TextProbFeature(),
             MotionSpeedFeature(self.keypoint_conf_threshold),
-            EmotionFeature(self.config, device=self.device),
-            CinematicFeature(self.config, device=self.device),
+            EmotionFeature(self.config),
+            CinematicFeature(self.config),
         ]
 
     def get_speaker_features(self, video_path, config: Config, existing_features=None):
