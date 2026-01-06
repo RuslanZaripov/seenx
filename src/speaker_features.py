@@ -355,9 +355,8 @@ class SpeakerFeaturesExtractor:
 
                 f.process_frames(ctx)
 
-            frame_idx = next_frame_idx
-
             pbar.update(next_frame_idx - frame_idx)
+            frame_idx = next_frame_idx
 
         cap.release()
         pbar.close()
