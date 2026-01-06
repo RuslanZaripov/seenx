@@ -150,17 +150,18 @@ class SpeakerFeaturesExtractor:
         frames = []
         frame_indices = []
 
-        for i in range(self.batch_size):
-            current_frame_idx = frame_idx + i
+        count = 0
+        curr_frame_idx = frame_idx
 
-            if speaker_probs[current_frame_idx] < self.speaker_threshold:
-                frame_idx += 1
+        while count < self.batch_size and curr_frame_idx < len(speaker_probs):
+            if speaker_probs[curr_frame_idx] >= self.speaker_threshold:
                 continue
+            curr_frame_idx += 1
+            count += 1
+            frames.append(self.read_and_process_frame(cap, curr_frame_idx))
+            frame_indices.append(curr_frame_idx)
 
-            frames.append(self.read_and_process_frame(cap, current_frame_idx))
-            frame_indices.append(current_frame_idx)
-
-        return frames, frame_indices
+        return frames, frame_indices, curr_frame_idx
 
     def pad_box(self, box: List[int], w: int, h: int) -> List[int]:
         x1, y1, x2, y2 = box
@@ -206,10 +207,10 @@ class SpeakerFeaturesExtractor:
 
         embeddings = []
         face_crops = np.array(face_crops)
-        logger.info(f"Embeddings model {face_crops.shape=} {face_crops.dtype=}")
+        # logger.info(f"Embeddings model {face_crops.shape=} {face_crops.dtype=}")
         if len(face_crops) > 0:
             embeddings = self.arcface_client.forward(face_crops)
-        logger.info(f"Extracted {type(embeddings)=} {len(embeddings)=}")
+        # logger.info(f"Extracted {type(embeddings)=} {len(embeddings)=}")
 
         return corrected_boxes, np.array(embeddings)
 
@@ -328,15 +329,15 @@ class SpeakerFeaturesExtractor:
         pbar = tqdm(total=total_frames, desc="Extracting features")
 
         while frame_idx < total_frames:
-            frames, frame_indices = self.collect_frames(cap, frame_idx, speaker_probs)
+            frames, frame_indices, next_frame_idx = self.collect_frames(
+                cap, frame_idx, speaker_probs
+            )
 
             # Initialize context
             ctx.frames = frames
             ctx.frame_shape = frames[0].shape
             ctx.frame_indices = frame_indices
 
-            ctx.face_boxes = None
-            ctx.face_crops = None
             ctx.keypoints = self.use_pose_model(frames)
 
             # Speaker face (shared)
@@ -354,9 +355,9 @@ class SpeakerFeaturesExtractor:
 
                 f.process_frames(ctx)
 
-            frame_idx += self.batch_size
+            frame_idx = next_frame_idx
 
-            pbar.update(self.batch_size)
+            pbar.update(next_frame_idx - frame_idx)
 
         cap.release()
         pbar.close()
