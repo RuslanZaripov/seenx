@@ -154,7 +154,7 @@ class SpeakerFeaturesExtractor:
         curr_frame_idx = frame_idx
 
         while count < self.batch_size and curr_frame_idx < len(speaker_probs):
-            if speaker_probs[curr_frame_idx] >= self.speaker_threshold:
+            if speaker_probs[curr_frame_idx] < self.speaker_threshold:
                 curr_frame_idx += 1
                 continue
 
