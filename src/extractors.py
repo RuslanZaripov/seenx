@@ -153,9 +153,6 @@ class EmotionFeature(FeatureExtractor):
         }
 
     def process_frames(self, ctx: BatchContext):
-        if not ctx.face_crops:
-            return
-
         results = self.pipe(ctx.face_crops)
         for idx, emotions_report in zip(ctx.frame_indices, results):
             for e in emotions_report:
