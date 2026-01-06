@@ -189,7 +189,9 @@ class CinematicFeature(FeatureExtractor):
         self._frames: list[np.ndarray] = []
         self._indices: list[int] = []
 
-        with torch.no_grad(), torch.autocast(enabled=self.use_fp16):
+        with torch.no_grad(), torch.autocast(
+            device_type=self.device.type, enabled=self.use_fp16
+        ):
             text_inputs = self.processor(
                 text=self.texts,
                 return_tensors="pt",
@@ -205,7 +207,9 @@ class CinematicFeature(FeatureExtractor):
             return_tensors="pt",
         ).to(self.device)
 
-        with torch.no_grad(), torch.autocast(enabled=self.use_fp16):
+        with torch.no_grad(), torch.autocast(
+            device_type=self.device.type, enabled=self.use_fp16
+        ):
             image_features = self.model.get_image_features(**inputs)
             image_features = image_features / image_features.norm(dim=-1, keepdim=True)
 
