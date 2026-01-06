@@ -114,10 +114,10 @@ class SpeakerFeaturesExtractor:
             .to(self.device)
         )
         input = input.float() / 255.0
-        logger.info(f"Face detector {input.shape=} {input.dtype=} {input.device=}")
+        logger.debug(f"Face detector {input.shape=} {input.dtype=} {input.device=}")
         results = self.face_detector(input, verbose=False)
-        logger.info(f"Face detector {len(results)=}")
-        logger.info(f"Face detector {results[0].boxes.xyxy=}")
+        logger.debug(f"Face detector {len(results)=}")
+        logger.debug(f"Face detector {results[0].boxes.xyxy=}")
         boxes = [res.boxes.xyxy.cpu().numpy().astype(float) for res in results]
         return boxes
 
@@ -129,10 +129,10 @@ class SpeakerFeaturesExtractor:
             .to(self.device)
         )
         input = input.float() / 255.0
-        logger.info(f"Pose model {input.shape=} {input.dtype=} {input.device=}")
+        logger.debug(f"Pose model {input.shape=} {input.dtype=} {input.device=}")
         results = self.pose_model(input, verbose=False)
-        logger.info(f"Pose model {len(results)=}")
-        logger.info(f"Pose model {results[0].boxes.xyxy=}")
+        logger.debug(f"Pose model {len(results)=}")
+        logger.debug(f"Pose model {results[0].boxes.xyxy=}")
         keypoints = [res.keypoints.data.cpu().numpy().astype(float) for res in results]
         return keypoints
 

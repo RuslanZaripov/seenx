@@ -153,7 +153,10 @@ class EmotionFeature(FeatureExtractor):
         }
 
     def process_frames(self, ctx: BatchContext):
-        results = self.pipe(torch.tensor(ctx.face_crops).to(self.pipe.device))
+        if not ctx.face_crops:
+            return
+
+        results = self.pipe(ctx.face_crops)
         for idx, emotions_report in zip(ctx.frame_indices, results):
             for e in emotions_report:
                 self.values[e["label"]][idx] = float(e["score"])
