@@ -146,7 +146,7 @@ class SpeakerFeaturesExtractor:
 
     def collect_frames(
         self, cap, frame_idx: int, speaker_probs: list[float]
-    ) -> list[np.ndarray]:
+    ) -> tuple[list[np.ndarray], list[int], int]:
         frames = []
         frame_indices = []
 
@@ -332,6 +332,8 @@ class SpeakerFeaturesExtractor:
             frames, frame_indices, next_frame_idx = self.collect_frames(
                 cap, frame_idx, speaker_probs
             )
+
+            logger.debug(f"Processing {frame_idx} {next_frame_idx}")
 
             # Initialize context
             ctx.frames = frames
