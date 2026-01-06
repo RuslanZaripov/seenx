@@ -93,7 +93,10 @@ class SpeakerFeaturesExtractor:
         self.keypoint_conf_threshold = 0.3
 
     def use_face_detector(self, frames: list[np.ndarray]) -> list[np.ndarray]:
-        results = self.face_detector(frames, verbose=False)
+        batch = np.stack(frames, axis=0)
+        logger.info(f"Face detector input batch shape: {batch.shape}")
+        results = self.face_detector(batch, verbose=False)
+        logger.info(f"Face detector returned {len(results)} results")
         boxes = [res.boxes.xyxy.cpu().numpy().astype(float) for res in results]
         return boxes
 
