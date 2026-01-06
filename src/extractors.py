@@ -1,4 +1,3 @@
-import cv2
 import torch
 import easyocr
 import numpy as np
@@ -6,6 +5,9 @@ from tqdm import tqdm
 from config import Config
 from abc import ABC, abstractmethod
 from transformers import pipeline, CLIPModel, CLIPProcessor
+from logger import Logger
+
+logger = Logger(show=True).get_logger()
 
 
 class BatchContext:
@@ -128,13 +130,13 @@ class EmotionFeature(FeatureExtractor):
     name = "emotion"
     requires_face = True
 
-    def __init__(self, batch_size: int, device: str | torch.device = "cpu"):
+    def __init__(self, config: Config):
         self.pipe = pipeline(
             "image-classification",
             model="dima806/facial_emotions_image_detection",
             use_fast=False,
-            device=device,
-            batch_size=batch_size,
+            device=config.get("device"),
+            batch_size=config.get("batch_size"),
         )
 
     def init_storage(self, total_frames: int):
@@ -164,13 +166,11 @@ class CinematicFeature(FeatureExtractor):
     def __init__(
         self,
         config: Config,
-        device: torch.device,
-        batch_size: int = 32,
         use_fp16: bool = True,
     ):
-        self.device = device
-        self.batch_size = batch_size
-        self.use_fp16 = use_fp16 and device.type == "cuda"
+        self.device = torch.device(config.get("device"))
+        self.batch_size = config.get("batch_size")
+        self.use_fp16 = use_fp16 and self.device.type == "cuda"
 
         self.processor = CLIPProcessor.from_pretrained(
             config.get("clip_model"),
@@ -178,7 +178,7 @@ class CinematicFeature(FeatureExtractor):
         )
 
         self.model = (
-            CLIPModel.from_pretrained(config.get("clip_model")).to(device).eval()
+            CLIPModel.from_pretrained(config.get("clip_model")).to(self.device).eval()
         )
 
         self.texts = ["a cinematic frame", "not a cinematic frame"]

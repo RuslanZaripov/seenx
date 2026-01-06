@@ -82,21 +82,15 @@ def get_frame_features(video_path: str, existing_features: List[str] = []) -> di
 
 
 class SpeakerFeaturesExtractor:
-    def __init__(
-        self,
-        config: Config,
-        device: str | torch.device = "cpu",
-        batch_size: int = 64,
-    ):
-        self.device = device
-        self.batch_size = batch_size
+    def __init__(self, config: Config):
+        self.config = config
+        self.device = torch.device(config.get("device"))
+        self.batch_size = config.get("batch_size")
         self.arcface_client = ArcFaceClient(config.get("face_embedder"))
-        self.face_detector = YOLO(config.get("face_detector"))
-        self.pose_model = YOLO(config.get("pose_model"))
+        self.face_detector = YOLO(config.get("face_detector")).to(self.device)
+        self.pose_model = YOLO(config.get("pose_model")).to(self.device)
         self.speaker_threshold = config.get("speaker_probability_threshold")
         self.keypoint_conf_threshold = 0.3
-        self.batch_size = batch_size
-        self.config = config
 
     def use_face_detector(self, frames: list[np.ndarray]) -> list[np.ndarray]:
         results = self.face_detector(frames, verbose=False)
@@ -107,6 +101,15 @@ class SpeakerFeaturesExtractor:
         results = self.pose_model(frame_rgb, verbose=False)
         keypoints = [res.keypoints.data.cpu().numpy().astype(float) for res in results]
         return keypoints
+
+    def read_and_process_frame(self, cap, frame_idx: int) -> np.ndarray:
+        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+        ret, frame = cap.read()
+        if not ret:
+            raise ValueError(f"Cannot read frame at index {frame_idx}")
+
+        frame_rgb = resize_or_crop_center_np(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        return frame_rgb
 
     def collect_frames(
         self, cap, frame_idx: int, speaker_probs: list[float]
@@ -121,12 +124,7 @@ class SpeakerFeaturesExtractor:
                 frame_idx += 1
                 continue
 
-            cap.set(cv2.CAP_PROP_POS_FRAMES, current_frame_idx)
-            ret, frame = cap.read()
-            if not ret:
-                break
-
-            frame_rgb = resize_or_crop_center_np(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+            frame_rgb = self.read_and_process_frame(cap, current_frame_idx)
             frames.append(frame_rgb)
 
             frame_indices.append(current_frame_idx)
@@ -195,7 +193,7 @@ class SpeakerFeaturesExtractor:
 
     def find_speaker(
         self, frames: list[np.ndarray], actual_speaker_embedding: np.ndarray
-    ):
+    ) -> tuple[list[List[int]], list[Image.Image]]:
         """Extract frame, get embeddings, and compute similarity."""
         boxes, embeddings = self.get_embeddings(frames)
 
@@ -230,32 +228,42 @@ class SpeakerFeaturesExtractor:
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         speaker_probs = np.zeros(total_frames, dtype=np.float32)
 
+        frames = []
         for start, end in tqdm(
             intervals, desc="Determining speaker probabilities for shots"
         ):
-            s = min(max(start + shift, 0), end)
+            s = min(start + shift, end)
             e = max(min(end - shift, total_frames - 1), start)
 
             s_frame_rgb = self.read_and_process_frame(cap, s)
             e_frame_rgb = self.read_and_process_frame(cap, e)
 
-            s_sim, _ = self.find_speaker(s_frame_rgb, actual_speaker_embedding)
-            e_sim, _ = self.find_speaker(e_frame_rgb, actual_speaker_embedding)
+            frames.extend([s_frame_rgb, e_frame_rgb])
 
-            n_frames = end - start + 1
-            filled = np.linspace(s_sim, e_sim, n_frames)
-            filled = np.where(filled > 0.9, filled, 0.0)
-            speaker_probs[start : end + 1] = filled
+        for i in range(0, len(frames), self.batch_size):
+            batch_frames = frames[i : i + self.batch_size]
+            frame_probs, batch_boxes, batch_face_crops = self.find_speaker(
+                batch_frames, actual_speaker_embedding
+            )
+
+            for j in range(0, len(batch_frames), 2):
+                start, end = intervals[i // 2 + j // 2]
+                n_frames = end - start + 1
+                s_sim = frame_probs[i + j]
+                e_sim = frame_probs[i + j + 1]
+                filled = np.linspace(s_sim, e_sim, n_frames)
+                filled = np.where(filled > 0.9, filled, 0.0)
+                speaker_probs[start : end + 1] = filled
 
         cap.release()
         return speaker_probs, actual_speaker_embedding
 
-    def build_feature_registry(self):
+    def build_feature_registry(self) -> list[FeatureExtractor]:
         return [
             FaceScreenRatioFeature(),
             TextProbFeature(),
             MotionSpeedFeature(self.keypoint_conf_threshold),
-            EmotionFeature(self.batch_size, device=self.device),
+            EmotionFeature(self.config, device=self.device),
             CinematicFeature(self.config, device=self.device),
         ]
 
@@ -292,16 +300,12 @@ class SpeakerFeaturesExtractor:
 
             ctx.face_boxes = None
             ctx.face_crops = None
-            ctx.keypoints = None
+            ctx.keypoints = self.use_pose_model(frames)
 
             # Speaker face (shared)
             _, ctx.face_boxes, ctx.face_crops = self.find_speaker(
                 frames, actual_speaker_embedding
             )
-
-            # Lazy dependencies
-            if any(f.requires_keypoints for f in features):
-                ctx.keypoints = self.use_pose_model(frames)
 
             # Run enabled features
             for f in features:
@@ -336,10 +340,7 @@ class SpeakerFeaturesExtractor:
 def speaker_features_pipeline(
     video_path: str, config: Config, existing_features: list = []
 ) -> pd.DataFrame:
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    emotion_detector = SpeakerFeaturesExtractor(config, device=device)
+    emotion_detector = SpeakerFeaturesExtractor(config)
 
     data = emotion_detector.get_speaker_features(video_path, config, existing_features)
 
