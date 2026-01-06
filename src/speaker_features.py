@@ -160,7 +160,24 @@ class SpeakerFeaturesExtractor:
             frames.append(self.read_and_process_frame(cap, current_frame_idx))
             frame_indices.append(current_frame_idx)
 
-        return frames, frame_indices, frame_idx + len(frames)
+        return frames, frame_indices
+
+    def pad_box(self, box: List[int], w: int, h: int) -> List[int]:
+        x1, y1, x2, y2 = box
+        bw, bh = x2 - x1, y2 - y1
+        diff = abs(bw - bh)
+        pad = diff // 2
+        if bw < bh:
+            x1 -= pad
+            x2 += pad
+        else:
+            y1 -= pad
+            y2 += pad
+        nx1 = max(0, x1)
+        ny1 = max(0, y1)
+        nx2 = min(w, x2)
+        ny2 = min(h, y2)
+        return [nx1, ny1, nx2, ny2]
 
     def get_embeddings(
         self, frames: list[np.ndarray]
@@ -176,32 +193,14 @@ class SpeakerFeaturesExtractor:
 
         for i, boxes in enumerate(batch_boxes):
             for box in boxes:
-                x1, y1, x2, y2 = box.astype(int)
-                bw, bh = x2 - x1, y2 - y1
-
-                diff = abs(bw - bh)
-                pad = diff // 2
-                if bw < bh:
-                    x1 -= pad
-                    x2 += pad
-                else:
-                    y1 -= pad
-                    y2 += pad
-
-                nx1 = max(0, x1)
-                ny1 = max(0, y1)
-                nx2 = min(w, x2)
-                ny2 = min(h, y2)
-
+                nx1, ny1, nx2, ny2 = self.pad_box(box.astype(int).tolist(), w, h)
                 face_crop = cv2.resize(
                     frames[i][ny1:ny2, nx1:nx2],
                     (112, 112),
                     interpolation=cv2.INTER_LINEAR,
                 )
-
                 # print(f"{face_crop.shape=}")
                 # plot_numpy_image(f'Face{i+1}', face_crop)
-
                 face_crops.append(face_crop)
                 corrected_boxes.append([i, nx1, ny1, nx2, ny2])
 
