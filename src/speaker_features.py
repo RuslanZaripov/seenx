@@ -297,7 +297,7 @@ class SpeakerFeaturesExtractor:
     def build_feature_registry(self) -> list[FeatureExtractor]:
         return [
             FaceScreenRatioFeature(),
-            TextProbFeature(),
+            TextProbFeature(self.config),
             MotionSpeedFeature(self.keypoint_conf_threshold),
             EmotionFeature(self.config),
             CinematicFeature(self.config),
