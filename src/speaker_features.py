@@ -121,8 +121,18 @@ class SpeakerFeaturesExtractor:
         boxes = [res.boxes.xyxy.cpu().numpy().astype(float) for res in results]
         return boxes
 
-    def use_pose_model(self, frame_rgb: list[np.ndarray]) -> list[np.ndarray]:
-        results = self.pose_model(frame_rgb, verbose=False)
+    def use_pose_model(self, frames: list[np.ndarray]) -> list[np.ndarray]:
+        # BCHW format with RGB channels float32 (0.0-1.0).
+        input = (
+            torch.from_numpy(np.stack(frames, axis=0))  # shape: (B, H, W, C)
+            .permute(0, 3, 1, 2)  # shape: (B, C, H, W)
+            .to(self.device)
+        )
+        input = input.float() / 255.0
+        logger.info(f"Pose model {input.shape=} {input.dtype=} {input.device=}")
+        results = self.pose_model(input, verbose=False)
+        logger.info(f"Pose model {len(results)=}")
+        logger.info(f"Pose model {results[0].boxes.xyxy=}")
         keypoints = [res.keypoints.data.cpu().numpy().astype(float) for res in results]
         return keypoints
 
@@ -155,9 +165,10 @@ class SpeakerFeaturesExtractor:
     def get_embeddings(
         self, frames: list[np.ndarray]
     ) -> tuple[list[List[int]], np.ndarray]:
+        # frames: list of (H, W, C) np.ndarray in RGB format
         batch_boxes = self.use_face_detector(frames)
-
         h, w, _ = frames[0].shape
+
         embeddings = []
         corrected_boxes = []
 
@@ -195,8 +206,11 @@ class SpeakerFeaturesExtractor:
                 corrected_boxes.append([i, nx1, ny1, nx2, ny2])
 
         embeddings = []
+        face_crops = np.array(face_crops)
+        logger.info(f"Embeddings model {face_crops.shape=} {face_crops.dtype=}")
         if len(face_crops) > 0:
             embeddings = self.arcface_client.forward(face_crops)
+        logger.info(f"Extracted {type(embeddings)=} {len(embeddings)=}")
 
         return corrected_boxes, np.array(embeddings)
 
