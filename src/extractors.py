@@ -65,14 +65,15 @@ class FaceScreenRatioFeature(FeatureExtractor):
 class TextProbFeature(FeatureExtractor):
     name = "text_prob"
 
-    def __init__(self):
+    def __init__(self, config: Config):
         self.ocr = easyocr.Reader(["en"], gpu=torch.cuda.is_available())
+        self.batch_size = config.get("batch_size")
 
     def init_storage(self, total_frames: int):
         self.values = [0.0] * total_frames
 
     def process_frames(self, ctx: BatchContext):
-        results = self.ocr.readtext_batched(ctx.frames, batch_size=len(ctx.frames))
+        results = self.ocr.readtext_batched(ctx.frames, batch_size=self.batch_size)
         for i, res in enumerate(results):
             self.values[ctx.frame_indices[i]] = (
                 float(np.mean([c for _, _, c in res])) if res else 0.0
