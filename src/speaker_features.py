@@ -293,7 +293,7 @@ class SpeakerFeaturesExtractor:
                 s_sim = frame_probs[j]
                 e_sim = frame_probs[j + 1]
                 filled = np.linspace(s_sim, e_sim, n_frames)
-                filled = np.where(filled > 0.9, filled, 0.0)
+                filled = np.where(filled > 0.95, filled, 0.0)
                 speaker_probs[start : end + 1] = filled
 
         cap.release()
