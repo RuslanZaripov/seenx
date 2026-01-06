@@ -109,13 +109,15 @@ class MotionSpeedFeature(FeatureExtractor):
             prev = ctx.keypoints[i - 1] if i > 0 else self.prev_keypoint
             curr = ctx.keypoints[i]
 
+            if prev is None:
+                self.prev_keypoint = curr
+                self.prev_frame_idx = frame_idx
+                continue
+
             if prev.size == 0 or curr.size == 0:
                 return
 
-            p = prev[0]
-            c = curr[0]
-
-            dist = self.distance(p, c)
+            dist = self.distance(prev[0], curr[0])
 
             self.values[frame_idx] = float(dist)
 
