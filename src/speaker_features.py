@@ -23,19 +23,33 @@ from extractors import (
 logger = Logger(show=True).get_logger()
 
 
-def resize_or_crop_center_np(frame: np.ndarray, size: int = 640) -> np.ndarray:
+def resize_crop_center_np(frame: np.ndarray, size: int = 640) -> np.ndarray:
+    """
+    Resize preserving aspect ratio and center-crop to (size, size).
+
+    Args:
+        frame: np.ndarray of shape (H, W, C)
+        size: target spatial size
+
+    Returns:
+        np.ndarray of shape (size, size, C)
+    """
     if frame.ndim != 3:
         raise ValueError(f"Expected shape (H, W, C), got {frame.shape}")
 
     h, w, c = frame.shape
 
-    if h < size or w < size:
-        frame = cv2.resize(frame, (size, size), interpolation=cv2.INTER_LINEAR)
+    scale = size / min(h, w)
+    if scale != 1.0:
+        new_h = int(round(h * scale))
+        new_w = int(round(w * scale))
+        frame = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
 
-    else:
-        top = (h - size) // 2
-        left = (w - size) // 2
-        frame = frame[top : top + size, left : left + size, :]
+    h, w, _ = frame.shape
+    top = max(0, (h - size) // 2)
+    left = max(0, (w - size) // 2)
+
+    frame = frame[top : top + size, left : left + size]
 
     return frame
 
@@ -117,8 +131,7 @@ class SpeakerFeaturesExtractor:
         ret, frame = cap.read()
         if not ret:
             raise ValueError(f"Cannot read frame at index {frame_idx}")
-
-        frame_rgb = resize_or_crop_center_np(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        frame_rgb = resize_crop_center_np(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
         return frame_rgb
 
     def collect_frames(
@@ -134,9 +147,7 @@ class SpeakerFeaturesExtractor:
                 frame_idx += 1
                 continue
 
-            frame_rgb = self.read_and_process_frame(cap, current_frame_idx)
-            frames.append(frame_rgb)
-
+            frames.append(self.read_and_process_frame(cap, current_frame_idx))
             frame_indices.append(current_frame_idx)
 
         return frames, frame_indices, frame_idx + len(frames)
@@ -226,7 +237,7 @@ class SpeakerFeaturesExtractor:
     def get_speaker_probs(self, intervals, video_path, config: Config, shift: int = 2):
         # shape: (H, W, C), BGR order
         img_bgr = cv2.imread(config.get("speaker_image_path"))
-        img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+        img_rgb = resize_crop_center_np(cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB))
 
         logger.info(f"Speaker image shape: {img_rgb.shape}")
 
