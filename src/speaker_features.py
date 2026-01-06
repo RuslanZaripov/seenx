@@ -108,17 +108,17 @@ class SpeakerFeaturesExtractor:
 
     def use_face_detector(self, frames: list[np.ndarray]) -> list[np.ndarray]:
         # BCHW format with RGB channels float32 (0.0-1.0).
-        input = (
+        input_tensor = (
             torch.from_numpy(np.stack(frames, axis=0))  # shape: (B, H, W, C)
             .permute(0, 3, 1, 2)  # shape: (B, C, H, W)
             .to(self.device)
         )
-        input = input.float() / 255.0
-        # logger.debug(f"Face detector {input.shape=} {input.dtype=} {input.device=}")
-        results = self.face_detector(input, verbose=False)
-        # logger.debug(f"Face detector {len(results)=}")
-        # logger.debug(f"Face detector {results[0].boxes.xyxy=}")
+        input_tensor = input_tensor.float() / 255.0
+        with torch.no_grad():
+            results = self.face_detector(input_tensor, verbose=False)
         boxes = [res.boxes.xyxy.cpu().numpy().astype(float) for res in results]
+        del input_tensor
+        del results
         return boxes
 
     def use_pose_model(self, frames: list[np.ndarray]) -> list[np.ndarray]:
@@ -128,12 +128,12 @@ class SpeakerFeaturesExtractor:
             .permute(0, 3, 1, 2)  # shape: (B, C, H, W)
             .to(self.device)
         )
-        input = input.float() / 255.0
-        # logger.debug(f"Pose model {input.shape=} {input.dtype=} {input.device=}")
-        results = self.pose_model(input, verbose=False)
-        # logger.debug(f"Pose model {len(results)=}")
-        # logger.debug(f"Pose model {results[0].boxes.xyxy=}")
+        input_tensor = input_tensor.float() / 255.0
+        with torch.no_grad():
+            results = self.pose_model(input_tensor, verbose=False)
         keypoints = [res.keypoints.data.cpu().numpy().astype(float) for res in results]
+        del input_tensor
+        del results
         return keypoints
 
     def read_and_process_frame(self, cap, frame_idx: int) -> np.ndarray:
@@ -367,6 +367,8 @@ class SpeakerFeaturesExtractor:
 
             pbar.update(next_frame_idx - frame_idx)
             frame_idx = next_frame_idx
+
+            torch.cuda.empty_cache()
 
         cap.release()
         pbar.close()
