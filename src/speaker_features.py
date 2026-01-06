@@ -214,11 +214,13 @@ class SpeakerFeaturesExtractor:
         return frame_probs, frame_boxes, face_crops
 
     def get_speaker_probs(self, intervals, video_path, config: Config, shift: int = 2):
-        img_bgr = cv2.imread(
-            config.get("speaker_image_path")
-        )  # shape: (H, W, C), BGR order
-        img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)  # convert to RGB if needed
-        boxes, actual_speaker_embedding = self.get_embeddings(img_rgb)
+        # shape: (H, W, C), BGR order
+        img_bgr = cv2.imread(config.get("speaker_image_path"))
+        img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+
+        logger.info(f"Speaker image shape: {img_rgb.shape}")
+
+        boxes, actual_speaker_embedding = self.get_embeddings([img_rgb])
 
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
@@ -271,6 +273,7 @@ class SpeakerFeaturesExtractor:
         existing_features = set(existing_features or [])
 
         shot_bounds = batch_shot_segmentation(video_path, config.get("shot_segmentor"))
+
         speaker_probs, actual_speaker_embedding = self.get_speaker_probs(
             shot_bounds, video_path, config
         )
