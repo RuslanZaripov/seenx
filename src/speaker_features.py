@@ -247,8 +247,14 @@ class SpeakerFeaturesExtractor:
             if frame_probs[frame_idx] < vec_sim:
                 frame_probs[frame_idx] = vec_sim
                 frame_boxes[frame_idx] = boxes[i][1:]
-                x1, y1, x2, y2 = frame_boxes[frame_idx]
+                x1, y1, x2, y2 = boxes[i][1:]
                 face_crops[frame_idx] = Image.fromarray(frames[frame_idx][y1:y2, x1:x2])
+
+        for i in range(len(frames)):
+            if frame_boxes[i] is None:
+                logger.warning(f"No face detected in frame index {i}")
+                face_crops[i] = Image.new("RGB", (112, 112), (0, 0, 0))
+                frame_boxes[i] = [0, 0, 0, 0]
 
         return frame_probs, frame_boxes, face_crops
 
@@ -336,8 +342,6 @@ class SpeakerFeaturesExtractor:
             frames, frame_indices, next_frame_idx = self.collect_frames(
                 cap, frame_idx, speaker_probs
             )
-
-            logger.debug(f"Processing {frame_idx} {next_frame_idx}")
 
             # Initialize context
             ctx.frames = frames

@@ -54,7 +54,7 @@ class FaceScreenRatioFeature(FeatureExtractor):
     def process_frames(self, ctx: BatchContext):
         for i in range(len(ctx.frame_indices)):
             if ctx.face_boxes[i] is None:
-                logger.error(f"No face box for frame {ctx.frame_indices[i]}")
+                logger.warning(f"No face box for frame {ctx.frame_indices[i]}")
                 continue
             x1, y1, x2, y2 = ctx.face_boxes[i]
             h, w = ctx.frame_shape[:2]
