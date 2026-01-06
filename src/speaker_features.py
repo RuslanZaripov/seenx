@@ -1,7 +1,6 @@
 import cv2
 import torch
 import numpy as np
-import easyocr
 import pandas as pd
 from tqdm import tqdm
 from ultralytics import YOLO
@@ -11,14 +10,14 @@ from typing import List
 from PIL import Image
 from logger import Logger
 from config import Config
-from abc import ABC, abstractmethod
 from extractors import (
-    FrameContext,
+    BatchContext,
     FaceScreenRatioFeature,
     TextProbFeature,
     MotionSpeedFeature,
     EmotionFeature,
     CinematicFeature,
+    FeatureExtractor,
 )
 
 logger = Logger(show=True).get_logger()
@@ -90,6 +89,7 @@ class SpeakerFeaturesExtractor:
         batch_size: int = 64,
     ):
         self.device = device
+        self.batch_size = batch_size
         self.arcface_client = ArcFaceClient(config.get("face_embedder"))
         self.face_detector = YOLO(config.get("face_detector"))
         self.pose_model = YOLO(config.get("pose_model"))
@@ -98,56 +98,86 @@ class SpeakerFeaturesExtractor:
         self.batch_size = batch_size
         self.config = config
 
-    def use_face_detector(self, frame_rgb: np.ndarray) -> np.ndarray:
-        results = self.face_detector(frame_rgb, verbose=False)
-        boxes = results[0].boxes.xyxy.cpu().numpy().astype(int)
+    def use_face_detector(self, frames: list[np.ndarray]) -> list[np.ndarray]:
+        results = self.face_detector(frames, verbose=False)
+        boxes = [res.boxes.xyxy.cpu().numpy().astype(float) for res in results]
         return boxes
 
-    def use_pose_model(self, frame_rgb: np.ndarray) -> np.ndarray:
+    def use_pose_model(self, frame_rgb: list[np.ndarray]) -> list[np.ndarray]:
         results = self.pose_model(frame_rgb, verbose=False)
-        keypoints = results[0].keypoints.data.cpu().numpy()
+        keypoints = [res.keypoints.data.cpu().numpy().astype(float) for res in results]
         return keypoints
 
-    def read_and_process_frame(self, cap, frame_idx: int) -> np.ndarray:
-        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
-        ret, frame = cap.read()
-        if not ret:
-            return None
-        frame_rgb = resize_or_crop_center_np(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-        return frame_rgb
+    def collect_frames(
+        self, cap, frame_idx: int, speaker_probs: list[float]
+    ) -> list[np.ndarray]:
+        frames = []
+        frame_indices = []
 
-    def get_embeddings(self, frame_rgb: np.ndarray):
-        boxes = self.use_face_detector(frame_rgb)
+        for i in range(self.batch_size):
+            current_frame_idx = frame_idx + i
 
-        h, w, _ = frame_rgb.shape
+            if speaker_probs[current_frame_idx] < self.speaker_threshold:
+                frame_idx += 1
+                continue
+
+            cap.set(cv2.CAP_PROP_POS_FRAMES, current_frame_idx)
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            frame_rgb = resize_or_crop_center_np(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+            frames.append(frame_rgb)
+
+            frame_indices.append(current_frame_idx)
+
+        return frames, frame_indices, frame_idx + len(frames)
+
+    def get_embeddings(
+        self, frames: list[np.ndarray]
+    ) -> tuple[list[List[int]], np.ndarray]:
+        batch_boxes = self.use_face_detector(frames)
+
+        h, w, _ = frames[0].shape
         embeddings = []
         corrected_boxes = []
-        for _, (x1, y1, x2, y2) in enumerate(boxes):
-            bw, bh = x2 - x1, y2 - y1
 
-            diff = abs(bw - bh)
-            pad = diff // 2
-            if bw < bh:
-                x1 -= pad
-                x2 += pad
-            else:
-                y1 -= pad
-                y2 += pad
+        face_crops = []
 
-            nx1 = max(0, x1)
-            ny1 = max(0, y1)
-            nx2 = min(w, x2)
-            ny2 = min(h, y2)
+        for i, boxes in enumerate(batch_boxes):
+            for box in boxes:
+                x1, y1, x2, y2 = box.astype(int)
+                bw, bh = x2 - x1, y2 - y1
 
-            face_crop = cv2.resize(
-                frame_rgb[ny1:ny2, nx1:nx2], (112, 112), interpolation=cv2.INTER_LINEAR
-            )
-            # plot_numpy_image(f'Face{i+1}', face_crop)
-            # print(f"{face_crop.shape=}")
-            face_embedding = self.arcface_client.forward(face_crop)
+                diff = abs(bw - bh)
+                pad = diff // 2
+                if bw < bh:
+                    x1 -= pad
+                    x2 += pad
+                else:
+                    y1 -= pad
+                    y2 += pad
 
-            embeddings.append(face_embedding)
-            corrected_boxes.append([nx1, ny1, nx2, ny2])
+                nx1 = max(0, x1)
+                ny1 = max(0, y1)
+                nx2 = min(w, x2)
+                ny2 = min(h, y2)
+
+                face_crop = cv2.resize(
+                    frames[i][ny1:ny2, nx1:nx2],
+                    (112, 112),
+                    interpolation=cv2.INTER_LINEAR,
+                )
+
+                # print(f"{face_crop.shape=}")
+                # plot_numpy_image(f'Face{i+1}', face_crop)
+
+                face_crops.append(face_crop)
+                corrected_boxes.append([i, nx1, ny1, nx2, ny2])
+
+        embeddings = []
+        if len(face_crops) > 0:
+            embeddings = self.arcface_client.forward(face_crops)
 
         return corrected_boxes, np.array(embeddings)
 
@@ -163,23 +193,27 @@ class SpeakerFeaturesExtractor:
         similarity = np.dot(emb1_norm, emb2_norm)
         return float(similarity)
 
-    def find_speaker(self, frame_rgb, actual_speaker_embedding):
+    def find_speaker(
+        self, frames: list[np.ndarray], actual_speaker_embedding: np.ndarray
+    ):
         """Extract frame, get embeddings, and compute similarity."""
-        boxes, embeddings = self.get_embeddings(frame_rgb)
+        boxes, embeddings = self.get_embeddings(frames)
 
-        if len(embeddings) == 0:
-            return 0.0, None
+        frame_boxes = [None] * len(frames)
+        frame_probs = [0.0] * len(frames)
+        face_crops = [None] * len(frames)
 
-        probs = [
-            self.vector_similarity(actual_speaker_embedding, e) for e in embeddings
-        ]
+        for i in range(len(boxes)):
+            frame_idx = boxes[i][0]
+            vec_sim = self.vector_similarity(actual_speaker_embedding, embeddings[i])
 
-        # plot_frame_with_boxes(frame_rgb, boxes, probs, title=f"Frame-{frame_idx}")
+            if frame_probs[frame_idx] < vec_sim:
+                frame_probs[frame_idx] = vec_sim
+                frame_boxes[frame_idx] = boxes[i][1:]
+                x1, y1, x2, y2 = frame_boxes[frame_idx]
+                face_crops[frame_idx] = Image.fromarray(frames[frame_idx][y1:y2, x1:x2])
 
-        max_index = np.argmax(probs)
-        max_prob = probs[max_index]
-
-        return max_prob, boxes[max_index]
+        return frame_probs, frame_boxes, face_crops
 
     def get_speaker_probs(self, intervals, video_path, config: Config, shift: int = 2):
         img_bgr = cv2.imread(
@@ -236,56 +270,52 @@ class SpeakerFeaturesExtractor:
         cap = cv2.VideoCapture(video_path)
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-        features = [
+        features: list[FeatureExtractor] = [
             f for f in self.build_feature_registry() if f.name not in existing_features
         ]
 
         for f in features:
             f.init_storage(total_frames)
 
-        ctx = FrameContext()
+        ctx = BatchContext()
         frame_idx = 0
 
         pbar = tqdm(total=total_frames, desc="Extracting features")
 
-        while True:
-            frame_rgb = self.read_and_process_frame(cap, frame_idx)
-            if frame_rgb is None:
-                break
-
-            if speaker_probs[frame_idx] < self.speaker_threshold:
-                frame_idx += 1
-                pbar.update(1)
-                continue
+        while frame_idx < total_frames:
+            frames, frame_indices = self.collect_frames(cap, frame_idx, speaker_probs)
 
             # Initialize context
-            ctx.frame_rgb = frame_rgb
-            ctx.frame_shape = frame_rgb.shape
-            ctx.frame_idx = frame_idx
-            ctx.face_box = None
-            ctx.face_crop = None
+            ctx.frames = frames
+            ctx.frame_shape = frames[0].shape
+            ctx.frame_indices = frame_indices
+
+            ctx.face_boxes = None
+            ctx.face_crops = None
             ctx.keypoints = None
 
             # Speaker face (shared)
-            _, ctx.face_box = self.find_speaker(frame_rgb, actual_speaker_embedding)
-
-            if ctx.face_box is not None:
-                x1, y1, x2, y2 = ctx.face_box
-                ctx.face_crop = Image.fromarray(frame_rgb[y1:y2, x1:x2])
+            _, ctx.face_boxes, ctx.face_crops = self.find_speaker(
+                frames, actual_speaker_embedding
+            )
 
             # Lazy dependencies
             if any(f.requires_keypoints for f in features):
-                ctx.keypoints = self.use_pose_model(frame_rgb)
+                ctx.keypoints = self.use_pose_model(frames)
 
             # Run enabled features
             for f in features:
-                if f.requires_face and ctx.face_box is None:
+                if f.requires_face and ctx.face_boxes is None:
                     continue
 
-                f.process_frame(ctx)
+                if f.requires_keypoints and ctx.keypoints is None:
+                    continue
 
-            frame_idx += 1
-            pbar.update(1)
+                f.process_frames(ctx)
+
+            frame_idx += self.batch_size
+
+            pbar.update(self.batch_size)
 
         cap.release()
         pbar.close()

@@ -1,28 +1,26 @@
 import cv2
-import numpy as np
-import easyocr
 import torch
-from transformers import CLIPImageProcessor, CLIPTokenizer, pipeline
+import easyocr
+import numpy as np
 from tqdm import tqdm
 from config import Config
-from shot_segmentation import batch_shot_segmentation
 from abc import ABC, abstractmethod
-from transformers import CLIPModel, CLIPProcessor
+from transformers import pipeline, CLIPModel, CLIPProcessor
 
 
-class FrameContext:
+class BatchContext:
     """
     Shared mutable context for a single frame.
     Populated once per frame and reused by all features.
     """
 
     def __init__(self):
-        self.frame_rgb = None
+        self.frames = None
         self.frame_shape = None
-        self.frame_idx = None
+        self.frame_indices = None
 
-        self.face_box = None
-        self.face_crop = None
+        self.face_boxes = None
+        self.face_crops = None
         self.keypoints = None
 
 
@@ -36,7 +34,7 @@ class FeatureExtractor(ABC):
         pass
 
     @abstractmethod
-    def process_frame(self, ctx: FrameContext):
+    def process_frames(self, ctx: BatchContext):
         pass
 
     @abstractmethod
@@ -51,11 +49,12 @@ class FaceScreenRatioFeature(FeatureExtractor):
     def init_storage(self, total_frames: int):
         self.values = [0.0] * total_frames
 
-    def process_frame(self, ctx: FrameContext):
-        x1, y1, x2, y2 = ctx.face_box
-        h, w = ctx.frame_shape[:2]
-        area = max(0, x2 - x1) * max(0, y2 - y1)
-        self.values[ctx.frame_idx] = area / (h * w)
+    def process_frames(self, ctx: BatchContext):
+        for i in range(len(ctx.frame_indices)):
+            x1, y1, x2, y2 = ctx.face_boxes[i]
+            h, w = ctx.frame_shape[:2]
+            area = max(0, x2 - x1) * max(0, y2 - y1)
+            self.values[ctx.frame_indices[i]] = area / (h * w)
 
     def finalize(self):
         return self.values
@@ -65,16 +64,17 @@ class TextProbFeature(FeatureExtractor):
     name = "text_prob"
 
     def __init__(self):
-        self.ocr = easyocr.Reader(["en"])
+        self.ocr = easyocr.Reader(["en"], gpu=torch.cuda.is_available())
 
     def init_storage(self, total_frames: int):
         self.values = [0.0] * total_frames
 
-    def process_frame(self, ctx: FrameContext):
-        results = self.ocr.readtext(ctx.frame_rgb)
-        self.values[ctx.frame_idx] = (
-            float(np.mean([c for _, _, c in results])) if results else 0.0
-        )
+    def process_frames(self, ctx: BatchContext):
+        results = self.ocr.readtext_batched(ctx.frames, batch_size=len(ctx.frames))
+        for i, res in enumerate(results):
+            self.values[ctx.frame_indices[i]] = (
+                float(np.mean([c for _, _, c in res])) if res else 0.0
+            )
 
     def finalize(self):
         return self.values
@@ -89,37 +89,36 @@ class MotionSpeedFeature(FeatureExtractor):
 
     def init_storage(self, total_frames: int):
         self.values = [0.0] * total_frames
-        self.prev_keypoints = None
+        self.prev_keypoint = None
         self.prev_frame_idx = None
 
-    def process_frame(self, ctx: FrameContext):
-        if self.prev_keypoints is None:
-            self.prev_keypoints = ctx.keypoints
-            self.prev_frame_idx = ctx.frame_idx
-            return
-
-        prev = self.prev_keypoints
-        curr = ctx.keypoints
-
-        if prev.size == 0 or curr.size == 0:
-            return
-
-        p = prev[0]
-        c = curr[0]
-
+    def distance(self, p: np.ndarray, c: np.ndarray) -> float:
         vp = p[p[:, 2] > self.conf_thr][:, :2]
         vc = c[c[:, 2] > self.conf_thr][:, :2]
 
         if len(vp) == 0 or len(vc) == 0:
-            return
+            return 0.0
 
         n = min(len(vp), len(vc))
-        dist = np.linalg.norm(vc[:n] - vp[:n], axis=1).mean()
+        return float(np.linalg.norm(vc[:n] - vp[:n], axis=1).mean())
 
-        self.values[ctx.frame_idx] = float(dist)
+    def process_frames(self, ctx: BatchContext):
+        for i, frame_idx in enumerate(ctx.frame_indices):
+            prev = ctx.keypoints[i - 1] if i > 0 else self.prev_keypoint
+            curr = ctx.keypoints[i]
 
-        self.prev_keypoints = curr
-        self.prev_frame_idx = ctx.frame_idx
+            if prev.size == 0 or curr.size == 0:
+                return
+
+            p = prev[0]
+            c = curr[0]
+
+            dist = self.distance(p, c)
+
+            self.values[frame_idx] = float(dist)
+
+            self.prev_keypoint = curr
+            self.prev_frame_idx = frame_idx
 
     def finalize(self):
         return self.values
@@ -137,7 +136,6 @@ class EmotionFeature(FeatureExtractor):
             device=device,
             batch_size=batch_size,
         )
-        self.batch_size = batch_size
 
     def init_storage(self, total_frames: int):
         self.values = {
@@ -149,31 +147,14 @@ class EmotionFeature(FeatureExtractor):
             "surprise": [0.0] * total_frames,
             "neutral": [0.0] * total_frames,
         }
-        self.batch_faces = []
-        self.batch_frame_indices = []
 
-    def process_frame(self, ctx: FrameContext):
-        self.batch_faces.append(ctx.face_crop)
-        self.batch_frame_indices.append(ctx.frame_idx)
-
-        if len(self.batch_faces) >= self.batch_size:
-            self._process_batch()
-
-    def _process_batch(self):
-        # move self.batch_faces to device
-        self.batch_faces = [torch.tensor(face) for face in self.batch_faces]
-        self.batch_faces = torch.stack(self.batch_faces).to(self.pipe.device)
-        results = self.pipe(self.batch_faces)
-        for idx, emotions_report in zip(self.batch_frame_indices, results):
+    def process_frames(self, ctx: BatchContext):
+        results = self.pipe(torch.tensor(ctx.face_crops).to(self.pipe.device))
+        for idx, emotions_report in zip(ctx.frame_indices, results):
             for e in emotions_report:
                 self.values[e["label"]][idx] = float(e["score"])
 
-        self.batch_faces = []
-        self.batch_frame_indices = []
-
     def finalize(self):
-        if self.batch_faces:
-            self._process_batch()
         return self.values
 
 
@@ -208,51 +189,31 @@ class CinematicFeature(FeatureExtractor):
         self._frames: list[np.ndarray] = []
         self._indices: list[int] = []
 
-        with torch.no_grad():
+        with torch.no_grad(), torch.autocast(enabled=self.use_fp16):
             text_inputs = self.processor(
                 text=self.texts,
                 return_tensors="pt",
                 padding=True,
             ).to(self.device)
 
-            self.text_features = self.model.get_text_features(**text_inputs)
-            self.text_features = self.text_features / self.text_features.norm(
-                dim=-1, keepdim=True
-            )
+            self.txt_feat = self.model.get_text_features(**text_inputs)
+            self.txt_feat = self.txt_feat / self.txt_feat.norm(dim=-1, keepdim=True)
 
-    def process_frame(self, ctx: FrameContext):
-        self._frames.append(ctx.frame_rgb)
-        self._indices.append(ctx.frame_idx)
+    def process_frames(self, ctx: BatchContext):
+        inputs = self.processor(
+            images=ctx.frames,
+            return_tensors="pt",
+        ).to(self.device)
+
+        with torch.no_grad(), torch.autocast(enabled=self.use_fp16):
+            image_features = self.model.get_image_features(**inputs)
+            image_features = image_features / image_features.norm(dim=-1, keepdim=True)
+
+            logits = image_features @ self.txt_feat.T
+            probs = logits.softmax(dim=-1)
+
+        for i, frame_idx in enumerate(ctx.frame_indices):
+            self.values[frame_idx] = float(probs[i, 0].item())
 
     def finalize(self):
-        if not self._frames:
-            return self.values
-
-        for start in range(0, len(self._frames), self.batch_size):
-            end = start + self.batch_size
-            batch_frames = self._frames[start:end]
-            batch_indices = self._indices[start:end]
-
-            inputs = self.processor(
-                images=batch_frames,
-                return_tensors="pt",
-            )
-
-            inputs = {k: v.to(self.device) for k, v in inputs.items()}
-
-            with torch.no_grad(), torch.autocast(enabled=self.use_fp16):
-                image_features = self.model.get_image_features(**inputs)
-                image_features = image_features / image_features.norm(
-                    dim=-1, keepdim=True
-                )
-
-                logits = image_features @ self.text_features.T
-                probs = logits.softmax(dim=-1)
-
-            for i, frame_idx in enumerate(batch_indices):
-                self.values[frame_idx] = float(probs[i, 0].item())
-
-        self._frames.clear()
-        self._indices.clear()
-
         return self.values
