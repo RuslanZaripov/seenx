@@ -284,10 +284,10 @@ class SpeakerFeaturesExtractor:
             )
 
             for j in range(0, len(batch_frames), 2):
-                start, end = intervals[i // 2 + j // 2]
+                start, end = intervals[j // 2 + i // 2]
                 n_frames = end - start + 1
-                s_sim = frame_probs[i + j]
-                e_sim = frame_probs[i + j + 1]
+                s_sim = frame_probs[j]
+                e_sim = frame_probs[j + 1]
                 filled = np.linspace(s_sim, e_sim, n_frames)
                 filled = np.where(filled > 0.9, filled, 0.0)
                 speaker_probs[start : end + 1] = filled
@@ -378,13 +378,11 @@ class SpeakerFeaturesExtractor:
 def speaker_features_pipeline(
     video_path: str, config: Config, existing_features: list = []
 ) -> pd.DataFrame:
-    emotion_detector = SpeakerFeaturesExtractor(config)
+    extractor = SpeakerFeaturesExtractor(config)
 
-    data = emotion_detector.get_speaker_features(video_path, config, existing_features)
-
+    data = extractor.get_speaker_features(video_path, config, existing_features)
     frame_features = get_frame_features(video_path, existing_features)
 
     data.update(frame_features)
-
     df = pd.DataFrame(data)
     return df
