@@ -1,5 +1,13 @@
 import os
 import sys
+import cv2
+import torch
+import argparse
+import numpy as np
+import pandas as pd
+from tqdm import tqdm
+import matplotlib.pyplot as plt
+from PIL import Image
 from logger import Logger
 
 logger = Logger(show=True).get_logger()
@@ -15,13 +23,6 @@ path = f"{root}/RAFT/core"
 logger.info(f"Adding {path} to sys.path")
 add_path(path)
 
-import cv2
-import torch
-import argparse
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from PIL import Image
 from raft import RAFT
 from utils import flow_viz
 from utils.utils import InputPadder
@@ -58,6 +59,8 @@ def zoom_features_pipeline(args):
     model.eval()
 
     cap = cv2.VideoCapture(args.video)
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
     ret, prev_frame = cap.read()
     if not ret:
         print("Cannot read video")
@@ -74,12 +77,16 @@ def zoom_features_pipeline(args):
 
     frame_features = []
 
-    with torch.no_grad():
+    with torch.no_grad(), tqdm(
+        total=total_frames - 1, desc="Extracting zoom features"
+    ) as pbar:
         frame_idx = 0
+
         while True:
             ret, next_frame = cap.read()
             if not ret:
                 break
+
             next_tensor = frame_to_tensor(next_frame)
 
             img1, img2 = padder.pad(prev_tensor, next_tensor)
@@ -113,6 +120,7 @@ def zoom_features_pipeline(args):
 
             prev_tensor = next_tensor
             frame_idx += 1
+            pbar.update(1)
 
     cap.release()
     df = pd.DataFrame(frame_features)
