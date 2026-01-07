@@ -99,6 +99,7 @@ def zoom_features_pipeline(args):
     x, y, empty_dists, center_x, center_y = make_center_grid(
         h, w, device=DEVICE, stride=FLOW_STRIDE
     )
+    frame = cv2.resize(frame, None, fx=0.5, fy=0.5)
 
     frame_buffer = deque([frame], maxlen=batch_size + 1)
     frame_features = []
@@ -109,11 +110,13 @@ def zoom_features_pipeline(args):
     ), tqdm(total=total_frames - 1, desc="Extracting zoom features") as pbar:
 
         while True:
-            ret, next_frame = cap.read()
+            ret, frame = cap.read()
             if not ret:
                 break
 
-            frame_buffer.append(next_frame)
+            frame = cv2.resize(frame, None, fx=0.5, fy=0.5)
+
+            frame_buffer.append(frame)
             if len(frame_buffer) < batch_size + 1:
                 continue
 
