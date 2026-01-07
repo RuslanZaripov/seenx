@@ -36,8 +36,8 @@ FLOW_STRIDE = 8
 
 def make_center_grid(h, w, device, stride):
     y, x = torch.meshgrid(
-        torch.arange(h, stride, device=device),
-        torch.arange(w, stride, device=device),
+        torch.arange(0, h, stride, device=device),
+        torch.arange(0, w, stride, device=device),
         indexing="ij",
     )
     cx, cy = w / 2.0, h / 2.0
@@ -146,7 +146,7 @@ def zoom_features_pipeline(args):
                 frame_idx += 1
                 pbar.update(1)
 
-            del (img1, img2, flow_up, batch)
+            del img1, img2, flow_up, batch
 
     cap.release()
     df = pd.DataFrame(frame_features)
