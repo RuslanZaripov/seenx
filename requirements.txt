@@ -17,6 +17,7 @@ openunmix
 pyyaml
 treetable
 submitit
+retrying
 
 demucs @ git+https://github.com/facebookresearch/demucs#egg=demucs
 deepface @ git+https://github.com/serengil/deepface.git
