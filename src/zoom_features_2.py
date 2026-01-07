@@ -45,11 +45,6 @@ def make_center_grid(h, w, device):
 
 
 def compute_flow_features_torch(flow, x, y, base_dist, cx, cy):
-    """
-    flow: [B, 2, H, W]
-    x,y,base_dist: [H, W] (torch, GPU)
-    """
-
     flow_x = flow[:, 0]
     flow_y = flow[:, 1]
 
@@ -66,7 +61,6 @@ def compute_flow_features_torch(flow, x, y, base_dist, cx, cy):
     new_dist = torch.sqrt((new_x - cx) ** 2 + (new_y - cy) ** 2)
 
     zoom = (new_dist >= base_dist).float().mean(dim=(1, 2))
-
     return mean_mag, mean_ang, zoom
 
 
@@ -83,7 +77,6 @@ def viz(img, flo):
     img = img[0].permute(1, 2, 0).cpu().numpy()
     flo = flo[0].permute(1, 2, 0).cpu().numpy()
 
-    # map flow to rgb image
     flo = flow_viz.flow_to_image(flo)
     img_flo = np.concatenate([img, flo], axis=0)
 
@@ -138,7 +131,7 @@ def zoom_features_pipeline(args):
 
             _, flow_up = model(img1, img2, iters=20, test_mode=True)
 
-            flow_viz(img1[0], flow_up[0])
+            viz(img1[0], flow_up[0])
 
             mean_mag, mean_ang, zoom = compute_flow_features_torch(
                 flow_up, x, y, empty_dists, center_x, center_y
