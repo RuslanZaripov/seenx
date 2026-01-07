@@ -30,8 +30,9 @@ from utils.utils import InputPadder
 
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-batch_size = 8
+BATCH_SIZE = 8
 FLOW_STRIDE = 8
+DOWNSCALE = 0.5
 
 
 def make_center_grid(h, w, device, stride):
@@ -45,25 +46,23 @@ def make_center_grid(h, w, device, stride):
     return x, y, base_dist, cx, cy
 
 
-def compute_flow_features_torch(flow, x, y, base_dist, cx, cy, stride):
+def compute_flow_features(flow, x, y, base_dist, cx, cy, stride):
     flow_x = flow[:, 0][:, ::stride, ::stride]
     flow_y = flow[:, 1][:, ::stride, ::stride]
 
     mag = torch.sqrt(flow_x**2 + flow_y**2)
     ang = torch.rad2deg(torch.atan2(flow_y, flow_x)) % 360
-
     mean_mag = mag.flatten(1).median(dim=1).values
     mean_ang = ang.flatten(1).median(dim=1).values
 
     new_x = x + flow_x
     new_y = y + flow_y
     new_dist = torch.sqrt((new_x - cx) ** 2 + (new_y - cy) ** 2)
-
     zoom = (new_dist >= base_dist).float().mean(dim=(1, 2))
     return mean_mag, mean_ang, zoom
 
 
-def frames_to_tensor_batch(frames):
+def frames_to_tensor(frames):
     arr = np.stack([cv2.cvtColor(f, cv2.COLOR_BGR2RGB) for f in frames])
     return torch.from_numpy(arr).permute(0, 3, 1, 2).float().to(DEVICE)
 
@@ -94,66 +93,58 @@ def zoom_features_pipeline(args):
     if not ret:
         print("Cannot read video")
         return
-    frame = cv2.resize(frame, None, fx=0.5, fy=0.5)
 
+    frame = cv2.resize(frame, None, fx=DOWNSCALE, fy=DOWNSCALE)
     h, w, _ = frame.shape
-    x, y, empty_dists, center_x, center_y = make_center_grid(
-        h, w, device=DEVICE, stride=FLOW_STRIDE
-    )
 
-    frame_buffer = deque([frame], maxlen=batch_size + 1)
-    frame_features = []
+    x, y, base_dist, cx, cy = make_center_grid(h, w, DEVICE, FLOW_STRIDE)
     frame_idx = 0
+    frame_features = []
+
+    batch_frames = [frame]
 
     with torch.no_grad(), torch.autocast(
         device_type=DEVICE, enabled=args.mixed_precision
     ), tqdm(total=total_frames - 1, desc="Extracting zoom features") as pbar:
+
         while True:
             ret, frame = cap.read()
             if not ret:
                 break
 
-            frame = cv2.resize(frame, None, fx=0.5, fy=0.5)
-            frame_buffer.append(frame)
+            frame = cv2.resize(frame, None, fx=DOWNSCALE, fy=DOWNSCALE)
+            batch_frames.append(frame)
 
-            if len(frame_buffer) < batch_size + 1:
-                continue
+            if len(batch_frames) == BATCH_SIZE + 1:
+                batch_tensor = frames_to_tensor(batch_frames)
+                img1 = batch_tensor[:-1]
+                img2 = batch_tensor[1:]
 
-            frames = list(frame_buffer)
-            batch = frames_to_tensor_batch(frames)
+                padder = InputPadder(img1.shape)
+                img1, img2 = padder.pad(img1, img2)
 
-            img1 = batch[:-1]
-            img2 = batch[1:]
+                _, flow_up = model(img1, img2, iters=20, test_mode=True)
 
-            padder = InputPadder(img1.shape)
-            img1, img2 = padder.pad(img1, img2)
-
-            _, flow_up = model(img1, img2, iters=20, test_mode=True)
-            print(flow_up.shape)
-
-            # viz(img1, flow_up)
-
-            mean_mag, mean_ang, zoom = compute_flow_features_torch(
-                flow_up, x, y, empty_dists, center_x, center_y, FLOW_STRIDE
-            )
-
-            for b in range(flow_up.shape[0]):
-                frame_features.append(
-                    {
-                        "frame": frame_idx,
-                        "mag": float(mean_mag[b].cpu()),
-                        "ang": float(mean_ang[b].cpu()),
-                        "zoom": float(zoom[b].cpu()),
-                    }
+                mean_mag, mean_ang, zoom = compute_flow_features(
+                    flow_up, x, y, base_dist, cx, cy, FLOW_STRIDE
                 )
-                frame_idx += 1
-                pbar.update(1)
 
-            del img1, img2, flow_up, batch
+                for b in range(flow_up.shape[0]):
+                    frame_features.append(
+                        {
+                            "frame": frame_idx,
+                            "mag": float(mean_mag[b].cpu()),
+                            "ang": float(mean_ang[b].cpu()),
+                            "zoom": float(zoom[b].cpu()),
+                        }
+                    )
+                    frame_idx += 1
+                    pbar.update(1)
+
+                batch_frames = []
 
     cap.release()
-    df = pd.DataFrame(frame_features)
-    return df
+    return pd.DataFrame(frame_features)
 
 
 if __name__ == "__main__":
