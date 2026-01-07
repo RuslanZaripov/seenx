@@ -1,8 +1,19 @@
 import os
 import sys
+from logger import Logger
+
+logger = Logger(show=True).get_logger()
+
+
+def add_path(path):
+    if path not in sys.path:
+        sys.path.insert(0, path)
+
 
 root = os.getcwd()
-sys.path.append(f"{root}/RAFT/core")
+path = f"{root}/RAFT/core"
+logger.info(f"Adding {path} to sys.path")
+add_path(path)
 
 import cv2
 import torch
