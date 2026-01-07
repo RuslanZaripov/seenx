@@ -94,12 +94,12 @@ def zoom_features_pipeline(args):
     if not ret:
         print("Cannot read video")
         return
+    frame = cv2.resize(frame, None, fx=0.5, fy=0.5)
 
     h, w, _ = frame.shape
     x, y, empty_dists, center_x, center_y = make_center_grid(
         h, w, device=DEVICE, stride=FLOW_STRIDE
     )
-    frame = cv2.resize(frame, None, fx=0.5, fy=0.5)
 
     frame_buffer = deque([frame], maxlen=batch_size + 1)
     frame_features = []
