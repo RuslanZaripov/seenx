@@ -123,7 +123,7 @@ class SpeakerFeaturesExtractor:
 
     def use_pose_model(self, frames: list[np.ndarray]) -> list[np.ndarray]:
         # BCHW format with RGB channels float32 (0.0-1.0).
-        input = (
+        input_tensor = (
             torch.from_numpy(np.stack(frames, axis=0))  # shape: (B, H, W, C)
             .permute(0, 3, 1, 2)  # shape: (B, C, H, W)
             .to(self.device)
