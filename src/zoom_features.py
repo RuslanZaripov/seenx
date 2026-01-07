@@ -253,11 +253,41 @@ def zoom_features_pipeline(
     return df
 
 
-if __name__ == "__main__":
-    files = ["/kaggle/working/youtube-video.mp4"]
-    for f in files:
+def main():
+    parser = argparse.ArgumentParser(
+        description="Process video files with zoom_features_pipeline"
+    )
+
+    parser.add_argument(
+        "-f",
+        "--files",
+        nargs="+",
+        required=True,
+        help="Paths to video files to process",
+    )
+
+    parser.add_argument(
+        "--show",
+        action="store_true",
+        help="Whether to show processing output (default: False)",
+    )
+
+    parser.add_argument(
+        "--gpu",
+        action="store_true",
+        help="Whether to use GPU for processing (default: False)",
+    )
+
+    args = parser.parse_args()
+
+    for f in args.files:
         print("Processing", f)
         try:
-            zoom_features_pipeline(f, show=False, gpu=False)
+            zoom_features_pipeline(f, show=args.show, gpu=args.gpu)
         except Exception as e:
+            print("Error processing file:", f)
             print(e)
+
+
+if __name__ == "__main__":
+    main()
