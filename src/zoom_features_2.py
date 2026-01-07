@@ -138,38 +138,28 @@ def zoom_features_pipeline(args):
             padder = InputPadder(img1.shape)
             img1, img2 = padder.pad(img1, img2)
 
-            flow_low, flow_up = model(img1, img2, iters=20, test_mode=True)
+            _, flow_up = model(img1, img2, iters=20, test_mode=True)
 
-            flows = flow_up.cpu().numpy()  # [B, 2, H, W]
+            mean_mag, mean_ang, zoom = compute_flow_features_torch(
+                flow_up, x, y, empty_dists, center_x, center_y
+            )
 
-            for b in range(flows.shape[0]):
-                flow_x = flows[b, 0]
-                flow_y = flows[b, 1]
-
-                mag = np.sqrt(flow_x**2 + flow_y**2)
-                ang = (np.arctan2(flow_y, flow_x) * 180 / np.pi) % 360
-
-                mean_mag = float(np.median(mag))
-                mean_ang = float(np.median(ang))
-
-                new_x = x + flow_x
-                new_y = y + flow_y
-                dists = np.sqrt((new_x - center_x) ** 2 + (new_y - center_y) ** 2)
-                zoom_in_factor = (
-                    np.count_nonzero(dists >= empty_dists) / empty_dists.size
-                )
-
+            for b in range(flow_up.shape[0]):
                 frame_features.append(
                     {
                         "frame": frame_idx,
-                        "mag": mean_mag,
-                        "ang": mean_ang,
-                        "zoom": zoom_in_factor,
+                        "mag": float(mean_mag[b].cpu()),
+                        "ang": float(mean_ang[b].cpu()),
+                        "zoom": float(zoom[b].cpu()),
                     }
                 )
-
                 frame_idx += 1
                 pbar.update(1)
+
+                flow_viz(img1[b : b + 1], flow_up[b : b + 1])
+
+            del (img1, img2, flow_up, batch)
+            torch.cuda.empty_cache()
 
     cap.release()
     df = pd.DataFrame(frame_features)
