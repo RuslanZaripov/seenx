@@ -154,7 +154,7 @@ def zoom_features_pipeline(args):
                 frame_idx += 1
                 pbar.update(1)
 
-                flow_viz(img1[b : b + 1], flow_up[b : b + 1])
+                # flow_viz(img1[b : b + 1], flow_up[b : b + 1])
 
             del (img1, img2, flow_up, batch)
             torch.cuda.empty_cache()
