@@ -41,7 +41,7 @@ def make_center_grid(h, w, device):
     )
     cx, cy = w / 2.0, h / 2.0
     base_dist = torch.sqrt((x - cx) ** 2 + (y - cy) ** 2)
-    return x, y, base_dist
+    return x, y, base_dist, cx, cy
 
 
 def compute_flow_features_torch(flow, x, y, base_dist, cx, cy):
@@ -108,9 +108,7 @@ def zoom_features_pipeline(args):
         return
 
     h, w, _ = frame.shape
-    y, x = np.meshgrid(np.arange(h), np.arange(w), indexing="ij")
-    center_x, center_y = w / 2, h / 2
-    empty_dists = np.sqrt((x - center_x) ** 2 + (y - center_y) ** 2)
+    x, y, empty_dists, center_x, center_y = make_center_grid(h, w, device=DEVICE)
 
     frame_buffer = deque([frame], maxlen=batch_size + 1)
     frame_features = []
