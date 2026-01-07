@@ -31,12 +31,13 @@ from utils.utils import InputPadder
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 batch_size = 8
+FLOW_STRIDE = 8
 
 
-def make_center_grid(h, w, device):
+def make_center_grid(h, w, device, stride):
     y, x = torch.meshgrid(
-        torch.arange(h, device=device),
-        torch.arange(w, device=device),
+        torch.arange(h, stride, device=device),
+        torch.arange(w, stride, device=device),
         indexing="ij",
     )
     cx, cy = w / 2.0, h / 2.0
@@ -44,18 +45,16 @@ def make_center_grid(h, w, device):
     return x, y, base_dist, cx, cy
 
 
-def compute_flow_features_torch(flow, x, y, base_dist, cx, cy):
-    flow_x = flow[:, 0]
-    flow_y = flow[:, 1]
+def compute_flow_features_torch(flow, x, y, base_dist, cx, cy, stride):
+    flow_x = flow[:, 0][:, ::stride, ::stride]
+    flow_y = flow[:, 1][:, ::stride, ::stride]
 
-    # Magnitude & angle
-    mag = torch.sqrt(flow_x**2 + flow_y**2)  # [B,H,W]
-    ang = torch.rad2deg(torch.atan2(flow_y, flow_x)) % 360  # [B,H,W]
+    mag = torch.sqrt(flow_x**2 + flow_y**2)
+    ang = torch.rad2deg(torch.atan2(flow_y, flow_x)) % 360
 
-    mean_mag = torch.median(mag.flatten(1), dim=1).values
-    mean_ang = torch.median(ang.flatten(1), dim=1).values
+    mean_mag = mag.flatten(1).median(dim=1).values
+    mean_ang = ang.flatten(1).median(dim=1).values
 
-    # Zoom-in factor
     new_x = x + flow_x
     new_y = y + flow_y
     new_dist = torch.sqrt((new_x - cx) ** 2 + (new_y - cy) ** 2)
@@ -65,12 +64,8 @@ def compute_flow_features_torch(flow, x, y, base_dist, cx, cy):
 
 
 def frames_to_tensor_batch(frames):
-    imgs = []
-    for f in frames:
-        img = cv2.cvtColor(f, cv2.COLOR_BGR2RGB)
-        img = torch.from_numpy(img).permute(2, 0, 1).float()
-        imgs.append(img)
-    return torch.stack(imgs).to(DEVICE)
+    arr = np.stack([cv2.cvtColor(f, cv2.COLOR_BGR2RGB) for f in frames])
+    return torch.from_numpy(arr).permute(0, 3, 1, 2).float().to(DEVICE)
 
 
 def viz(img, flo):
@@ -101,15 +96,17 @@ def zoom_features_pipeline(args):
         return
 
     h, w, _ = frame.shape
-    x, y, empty_dists, center_x, center_y = make_center_grid(h, w, device=DEVICE)
+    x, y, empty_dists, center_x, center_y = make_center_grid(
+        h, w, device=DEVICE, stride=FLOW_STRIDE
+    )
 
     frame_buffer = deque([frame], maxlen=batch_size + 1)
     frame_features = []
     frame_idx = 0
 
-    with torch.no_grad(), tqdm(
-        total=total_frames - 1, desc="Extracting zoom features"
-    ) as pbar:
+    with torch.no_grad(), torch.autocast(
+        device_type=DEVICE, enabled=args.mixed_precision
+    ), tqdm(total=total_frames - 1, desc="Extracting zoom features") as pbar:
 
         while True:
             ret, next_frame = cap.read()
@@ -131,7 +128,7 @@ def zoom_features_pipeline(args):
 
             _, flow_up = model(img1, img2, iters=20, test_mode=True)
 
-            viz(img1, flow_up)
+            # viz(img1, flow_up)
 
             mean_mag, mean_ang, zoom = compute_flow_features_torch(
                 flow_up, x, y, empty_dists, center_x, center_y
@@ -150,7 +147,6 @@ def zoom_features_pipeline(args):
                 pbar.update(1)
 
             del (img1, img2, flow_up, batch)
-            torch.cuda.empty_cache()
 
     cap.release()
     df = pd.DataFrame(frame_features)
@@ -176,6 +172,8 @@ if __name__ == "__main__":
         f"{root}/models/raft-sintel.pth",
         "--video",
         "/kaggle/input/seenx-data/videos/faceless_youtube_channel_ideas.mp4",
+        "--small",
+        "--mixed_precision",
     ]
 
     args = parser.parse_args()
