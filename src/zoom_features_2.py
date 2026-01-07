@@ -108,15 +108,14 @@ def zoom_features_pipeline(args):
     with torch.no_grad(), torch.autocast(
         device_type=DEVICE, enabled=args.mixed_precision
     ), tqdm(total=total_frames - 1, desc="Extracting zoom features") as pbar:
-
         while True:
             ret, frame = cap.read()
             if not ret:
                 break
 
             frame = cv2.resize(frame, None, fx=0.5, fy=0.5)
-
             frame_buffer.append(frame)
+
             if len(frame_buffer) < batch_size + 1:
                 continue
 
@@ -130,6 +129,7 @@ def zoom_features_pipeline(args):
             img1, img2 = padder.pad(img1, img2)
 
             _, flow_up = model(img1, img2, iters=20, test_mode=True)
+            print(flow_up.shape)
 
             # viz(img1, flow_up)
 
