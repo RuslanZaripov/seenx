@@ -131,7 +131,7 @@ def zoom_features_pipeline(args):
             # viz(img1, flow_up)
 
             mean_mag, mean_ang, zoom = compute_flow_features_torch(
-                flow_up, x, y, empty_dists, center_x, center_y
+                flow_up, x, y, empty_dists, center_x, center_y, FLOW_STRIDE
             )
 
             for b in range(flow_up.shape[0]):
