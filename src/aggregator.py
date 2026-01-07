@@ -54,12 +54,12 @@ def aggregate(
     else:
         retention = existing_df[["retention"]]
 
-    logger.info("Extracting speaker features")
-    speaker_features = speaker_features_pipeline(
-        video_path=video_path,
-        config=config,
-        existing_features=existing_features,
-    )
+    # logger.info("Extracting speaker features")
+    # speaker_features = speaker_features_pipeline(
+    #     video_path=video_path,
+    #     config=config,
+    #     existing_features=existing_features,
+    # )
 
     logger.info("Extracting sound features")
     sound_features = sound_features_pipeline(

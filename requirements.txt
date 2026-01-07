@@ -15,6 +15,7 @@ julius>=0.2.3
 lameenc>=1.2
 openunmix
 pyyaml
+treetable
 
 demucs @ git+https://github.com/facebookresearch/demucs#egg=demucs
 deepface @ git+https://github.com/serengil/deepface.git
