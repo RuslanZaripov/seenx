@@ -30,7 +30,7 @@ from utils.utils import InputPadder
 
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-batch_size = 16
+batch_size = 8
 
 
 def make_center_grid(h, w, device):
@@ -138,6 +138,8 @@ def zoom_features_pipeline(args):
 
             _, flow_up = model(img1, img2, iters=20, test_mode=True)
 
+            flow_viz(img1[0], flow_up[0])
+
             mean_mag, mean_ang, zoom = compute_flow_features_torch(
                 flow_up, x, y, empty_dists, center_x, center_y
             )
@@ -153,8 +155,6 @@ def zoom_features_pipeline(args):
                 )
                 frame_idx += 1
                 pbar.update(1)
-
-                # flow_viz(img1[b : b + 1], flow_up[b : b + 1])
 
             del (img1, img2, flow_up, batch)
             torch.cuda.empty_cache()
