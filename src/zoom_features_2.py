@@ -30,7 +30,7 @@ from utils.utils import InputPadder
 
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-batch_size = 8
+batch_size = 32
 
 
 def make_center_grid(h, w, device):
