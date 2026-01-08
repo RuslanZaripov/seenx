@@ -107,6 +107,33 @@ def zoom_features_pipeline(args):
         device_type=DEVICE, enabled=args.mixed_precision
     ), tqdm(total=total_frames - 1, desc="Extracting zoom features") as pbar:
 
+        def process_batch(fs):
+            nonlocal frame_idx, frame_features, pbar
+            batch_tensor = frames_to_tensor(fs)
+            img1 = batch_tensor[:-1]
+            img2 = batch_tensor[1:]
+
+            padder = InputPadder(img1.shape)
+            img1, img2 = padder.pad(img1, img2)
+
+            _, flow_up = model(img1, img2, iters=20, test_mode=True)
+
+            mean_mag, mean_ang, zoom = compute_flow_features(
+                flow_up, x, y, base_dist, cx, cy, FLOW_STRIDE
+            )
+
+            for b in range(flow_up.shape[0]):
+                frame_features.append(
+                    {
+                        "frame": frame_idx,
+                        "mag": float(mean_mag[b].cpu()),
+                        "ang": float(mean_ang[b].cpu()),
+                        "zoom": float(zoom[b].cpu()),
+                    }
+                )
+                frame_idx += 1
+                pbar.update(1)
+
         while True:
             ret, frame = cap.read()
             if not ret:
@@ -115,33 +142,12 @@ def zoom_features_pipeline(args):
             frame = cv2.resize(frame, None, fx=DOWNSCALE, fy=DOWNSCALE)
             batch_frames.append(frame)
 
-            if len(batch_frames) == BATCH_SIZE + 1:
-                batch_tensor = frames_to_tensor(batch_frames)
-                img1 = batch_tensor[:-1]
-                img2 = batch_tensor[1:]
-
-                padder = InputPadder(img1.shape)
-                img1, img2 = padder.pad(img1, img2)
-
-                _, flow_up = model(img1, img2, iters=20, test_mode=True)
-
-                mean_mag, mean_ang, zoom = compute_flow_features(
-                    flow_up, x, y, base_dist, cx, cy, FLOW_STRIDE
-                )
-
-                for b in range(flow_up.shape[0]):
-                    frame_features.append(
-                        {
-                            "frame": frame_idx,
-                            "mag": float(mean_mag[b].cpu()),
-                            "ang": float(mean_ang[b].cpu()),
-                            "zoom": float(zoom[b].cpu()),
-                        }
-                    )
-                    frame_idx += 1
-                    pbar.update(1)
-
+            if len(batch_frames) == BATCH_SIZE:
+                process_batch(batch_frames)
                 batch_frames = []
+
+        if len(batch_frames) > 1:
+            process_batch(batch_frames)
 
     cap.release()
     return pd.DataFrame(frame_features)
