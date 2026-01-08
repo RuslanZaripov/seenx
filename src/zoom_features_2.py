@@ -111,7 +111,7 @@ def process_batch(
     for i in range(len(mag)):
         features.append(
             {
-                "frame": start_idx + i,
+                # "frame": start_idx + i,
                 "flow_mag_med": float(mag[i]),
                 "radial_med": float(radial[i]),
                 "radial_ratio": float(ratio[i]),
