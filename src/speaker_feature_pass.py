@@ -1,3 +1,4 @@
+import argparse
 import cv2
 import easyocr
 import torch
@@ -549,11 +550,24 @@ class CinematicFeaturePass(VideoFeaturePass):
 
 
 if __name__ == "__main__":
-    config = Config("configs/local.json")
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--config",
+        type=str,
+        required=True,
+        help="Path to config file.",
+    )
+    parser.add_argument(
+        "--video",
+        type=str,
+        required=True,
+        help="Path to video file.",
+    )
+    args = parser.parse_args()
 
-    video_path = "static/videos/trimmed.mp4"
+    config = Config(args.config)
     features_df = run_feature_pipeline(
-        video_path,
+        args.video,
         config,
         passes=[
             SpeakerProbabilityPass(config),
