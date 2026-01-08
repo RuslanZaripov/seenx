@@ -5,10 +5,11 @@
     "shot_segmentor": "static/weights/transnetv2-pytorch-weights.pth",
     "whisper_model_size": "tiny",
     "pose_model": "static/weights/yolo11n-pose.pt",
-    "speaker_probability_threshold": 0.9,
+    "speaker_probability_threshold": 0.95,
+    "keypoint_confidence_threshold": 0.3,
     "source_separation_dir": "static/separated/htdemucs/output_audio",
     "clip_model": "openai/clip-vit-base-patch32",
-    "batch_size": 64,
+    "batch_size": 4,
     "device": "cpu",
     "optical_flow_model": "static/weights/raft-small.pth"
 }
