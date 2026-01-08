@@ -340,7 +340,7 @@ class MotionSpeedFeaturePass(VideoFeaturePass):
         self.config = config
 
     def required_keys(self):
-        return set()
+        return {"speaker_prob"}
 
     def produces_keys(self):
         return {"motion_speed"}
@@ -438,7 +438,7 @@ class EmotionFeaturePass(VideoFeaturePass):
         self.config = config
 
     def required_keys(self):
-        return {"frame_face_boxes"}
+        return {"frame_face_boxes", "speaker_prob"}
 
     def produces_keys(self):
         return {"emotion"}
@@ -577,7 +577,7 @@ if __name__ == "__main__":
         args.video,
         config,
         passes=[
-            # SpeakerProbabilityPass(config),
+            SpeakerProbabilityPass(config),
             # FaceScreenRatioFeaturePass(config),
             # TextProbFeaturePass(config),
             MotionSpeedFeaturePass(config),
