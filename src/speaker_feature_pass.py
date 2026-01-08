@@ -403,7 +403,7 @@ class MotionSpeedFeaturePass(VideoFeaturePass):
             for idx, kps in zip(indices, batch_kps):
                 context["data"].at[idx, "frame_keypoints"] = kps
 
-            for idx in enumerate(indices):
+            for i, idx in enumerate(indices):
                 prev_index = idx - 1
                 if prev_index < 0:
                     continue
