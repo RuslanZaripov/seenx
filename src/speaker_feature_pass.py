@@ -58,7 +58,7 @@ def run_feature_pipeline(
         if p.produces_keys() & existing_features:
             continue
 
-        missing = p.required_keys() - set(context["data"].columns)
+        missing = p.required_keys() - context.keys() - set(context["data"].columns)
         if missing:
             raise RuntimeError(f"Missing deps: {missing}")
 
