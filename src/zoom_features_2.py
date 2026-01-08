@@ -30,7 +30,7 @@ from utils.utils import InputPadder
 
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-BATCH_SIZE = 2
+BATCH_SIZE = 8
 FLOW_STRIDE = 8
 DOWNSCALE = 0.5
 
@@ -136,12 +136,14 @@ def zoom_features_pipeline(args):
                     }
                 )
                 frame_idx += 1
-                pbar.update(1)
+                logger.info(f"added {frame_idx}")
 
         while True:
             ret, frame = cap.read()
             if not ret:
                 break
+            pbar.update(1)
+
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             frame = cv2.resize(frame, None, fx=DOWNSCALE, fy=DOWNSCALE)
             batch_frames.append(frame)
