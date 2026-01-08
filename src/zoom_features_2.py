@@ -26,8 +26,9 @@ logger.info(f"Adding {path} to sys.path")
 add_path(path)
 
 from raft import RAFT
-from utils import flow_viz
 from utils.utils import InputPadder
+
+# from utils import flow_viz
 
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -72,15 +73,13 @@ def compute_flow_features(flow, grid):
     return mag_med, radial_med, radial_ratio
 
 
-def viz(img, flo):
-    img = img[0].permute(1, 2, 0).cpu().numpy()
-    flo = flo[0].permute(1, 2, 0).cpu().numpy()
-
-    flo = flow_viz.flow_to_image(flo)
-    img_flo = np.concatenate([img, flo], axis=0)
-
-    plt.imshow(img_flo / 255.0)
-    plt.show()
+# def viz(img, flo):
+#     img = img[0].permute(1, 2, 0).cpu().numpy()
+#     flo = flo[0].permute(1, 2, 0).cpu().numpy()
+#     flo = flow_viz.flow_to_image(flo)
+#     img_flo = np.concatenate([img, flo], axis=0)
+#     plt.imshow(img_flo / 255.0)
+#     plt.show()
 
 
 def process_batch(
@@ -150,7 +149,12 @@ def zoom_features_pipeline(args) -> pd.DataFrame:
 
     batch = [frame]
     features = [
-        {"frame": 0, "flow_mag_med": 0.0, "radial_med": 0.0, "radial_ratio": 0.0}
+        {
+            # "frame": 0,
+            "flow_mag_med": 0.0,
+            "radial_med": 0.0,
+            "radial_ratio": 0.0,
+        }
     ]
 
     frame_idx = 1

@@ -54,22 +54,22 @@ def aggregate(
     else:
         retention = existing_df[["retention"]]
 
-    # logger.info("Extracting speaker features")
-    # speaker_features = speaker_features_pipeline(
-    #     video_path=video_path,
-    #     config=config,
-    #     existing_features=existing_features,
-    # )
+    logger.info("Extracting speaker features")
+    speaker_features = speaker_features_pipeline(
+        video_path=video_path,
+        config=config,
+        existing_features=existing_features,
+    )
 
-    # logger.info("Extracting sound features")
-    # sound_features = sound_features_pipeline(
-    #     audio_file_path=audio_path, existing_features=existing_features
-    # )
+    logger.info("Extracting sound features")
+    sound_features = sound_features_pipeline(
+        audio_file_path=audio_path, existing_features=existing_features
+    )
 
-    # logger.info("Extracting music features")
-    # music_features, vocal_features = get_vocal_music_features(
-    #     audio_path=audio_path, config=config, existing_features=existing_features
-    # )
+    logger.info("Extracting music features")
+    music_features, vocal_features = get_vocal_music_features(
+        audio_path=audio_path, config=config, existing_features=existing_features
+    )
 
     logger.info("Extracting zoom features")
     zoom_features = zoom_features_pipeline(
