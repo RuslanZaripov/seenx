@@ -6,3 +6,5 @@ weights/
 static/
 notebooks/
 logfile.log
+
+/RAFT/

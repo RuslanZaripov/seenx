@@ -30,7 +30,7 @@ from utils.utils import InputPadder
 
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-BATCH_SIZE = 8
+BATCH_SIZE = 2
 FLOW_STRIDE = 8
 DOWNSCALE = 0.5
 
@@ -63,8 +63,12 @@ def compute_flow_features(flow, x, y, base_dist, cx, cy, stride):
 
 
 def frames_to_tensor(frames):
-    arr = np.stack([cv2.cvtColor(f, cv2.COLOR_BGR2RGB) for f in frames])
-    return torch.from_numpy(arr).permute(0, 3, 1, 2).float().to(DEVICE)
+    return (
+        torch.from_numpy(np.stack(frames, axis=0))
+        .permute(0, 3, 1, 2)
+        .float()
+        .to(DEVICE)
+    )
 
 
 def viz(img, flo):
@@ -80,7 +84,7 @@ def viz(img, flo):
 
 def zoom_features_pipeline(args):
     model = torch.nn.DataParallel(RAFT(args))
-    model.load_state_dict(torch.load(args.model))
+    model.load_state_dict(torch.load(args.model, map_location=DEVICE))
 
     model = model.module
     model.to(DEVICE)
@@ -93,15 +97,15 @@ def zoom_features_pipeline(args):
     if not ret:
         print("Cannot read video")
         return
-
+    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     frame = cv2.resize(frame, None, fx=DOWNSCALE, fy=DOWNSCALE)
     h, w, _ = frame.shape
 
     x, y, base_dist, cx, cy = make_center_grid(h, w, DEVICE, FLOW_STRIDE)
-    frame_idx = 0
-    frame_features = []
 
+    frame_features = [{"frame": 0, "mag": 0.0, "ang": 0.0, "zoom": 0.0}]
     batch_frames = [frame]
+    frame_idx = 1
 
     with torch.no_grad(), torch.autocast(
         device_type=DEVICE, enabled=args.mixed_precision
@@ -122,7 +126,7 @@ def zoom_features_pipeline(args):
                 flow_up, x, y, base_dist, cx, cy, FLOW_STRIDE
             )
 
-            for b in range(flow_up.shape[0]):
+            for b in range(BATCH_SIZE):
                 frame_features.append(
                     {
                         "frame": frame_idx,
@@ -138,13 +142,13 @@ def zoom_features_pipeline(args):
             ret, frame = cap.read()
             if not ret:
                 break
-
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             frame = cv2.resize(frame, None, fx=DOWNSCALE, fy=DOWNSCALE)
             batch_frames.append(frame)
 
-            if len(batch_frames) == BATCH_SIZE:
+            if len(batch_frames) == BATCH_SIZE + 1:
                 process_batch(batch_frames)
-                batch_frames = []
+                batch_frames = [batch_frames[-1]]
 
         if len(batch_frames) > 1:
             process_batch(batch_frames)
@@ -166,15 +170,6 @@ if __name__ == "__main__":
         action="store_true",
         help="use efficent correlation implementation",
     )
-
-    manual_args = [
-        "--model",
-        f"{root}/models/raft-sintel.pth",
-        "--video",
-        "/kaggle/input/seenx-data/videos/faceless_youtube_channel_ideas.mp4",
-        "--small",
-        "--mixed_precision",
-    ]
 
     args = parser.parse_args()
     print(args)

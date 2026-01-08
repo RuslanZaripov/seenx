@@ -5,7 +5,7 @@ import os
 from logger import Logger
 from speaker_features import speaker_features_pipeline
 from sound_features import sound_features_pipeline, get_vocal_music_features
-from zoom_features import zoom_features_pipeline
+from zoom_features_2 import zoom_features_pipeline
 from parse_retention import parse_retention
 from transcribe import collect_wps
 from utils import get_video_duration
@@ -73,10 +73,13 @@ def aggregate(
 
     logger.info("Extracting zoom features")
     zoom_features = zoom_features_pipeline(
-        video_file_path=video_path,
-        show=False,
-        gpu=False,
-        existing_features=existing_features,
+        argparse.Namespace(
+            model=config.get("optical_flow_model"),
+            video=video_path,
+            small=True,
+            mixed_precision=True,
+            alternate_corr=False,
+        )
     )
 
     logger.info("Collecting words per second data")
