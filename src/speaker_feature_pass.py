@@ -369,6 +369,13 @@ class MotionSpeedFeaturePass(VideoFeaturePass):
         return keypoints
 
     def distance(self, p: np.ndarray, c: np.ndarray) -> float:
+        # p, c: (num_people, 17, 3)
+        if p is None or c is None or len(p) == 0 or len(c) == 0:
+            return 0.0
+
+        p = p[0]  # (17, 3)
+        c = c[0]  # (17, 3)
+
         vp = p[p[:, 2] > self.kps_thr][:, :2]
         vc = c[c[:, 2] > self.kps_thr][:, :2]
 
@@ -570,7 +577,7 @@ if __name__ == "__main__":
         args.video,
         config,
         passes=[
-            SpeakerProbabilityPass(config),
+            # SpeakerProbabilityPass(config),
             # FaceScreenRatioFeaturePass(config),
             # TextProbFeaturePass(config),
             MotionSpeedFeaturePass(config),
