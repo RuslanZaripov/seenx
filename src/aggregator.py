@@ -5,6 +5,15 @@ import os
 from logger import Logger
 from speaker_features import speaker_features_pipeline
 from sound_features import sound_features_pipeline, get_vocal_music_features
+from src.speaker_feature_pass import (
+    CinematicFeaturePass,
+    EmotionFeaturePass,
+    FaceScreenRatioFeaturePass,
+    MotionSpeedFeaturePass,
+    SpeakerProbabilityPass,
+    TextProbFeaturePass,
+    run_feature_pipeline,
+)
 from zoom_features_2 import zoom_features_pipeline
 from parse_retention import parse_retention
 from transcribe import collect_wps
@@ -55,9 +64,22 @@ def aggregate(
         retention = existing_df[["retention"]]
 
     logger.info("Extracting speaker features")
-    speaker_features = speaker_features_pipeline(
-        video_path=video_path,
-        config=config,
+    # speaker_features = speaker_features_pipeline(
+    #     video_path=video_path,
+    #     config=config,
+    #     existing_features=existing_features,
+    # )
+    speaker_features = run_feature_pipeline(
+        video_path,
+        config,
+        passes=[
+            SpeakerProbabilityPass(config),
+            FaceScreenRatioFeaturePass(config),
+            TextProbFeaturePass(config),
+            MotionSpeedFeaturePass(config),
+            EmotionFeaturePass(config),
+            CinematicFeaturePass(config),
+        ],
         existing_features=existing_features,
     )
 
