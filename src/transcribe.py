@@ -1,6 +1,6 @@
 import math
 import pandas as pd
-from utils import get_video_duration
+from seenx_utils import get_video_duration
 from logger import Logger
 from config import Config
 import whisper
