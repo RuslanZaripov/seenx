@@ -32,7 +32,7 @@ from utils.utils import InputPadder
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 DOWNSCALE = 0.5
-BATCH_SIZE = 8
+BATCH_SIZE = 32
 FLOW_STRIDE = 8
 
 
@@ -149,7 +149,9 @@ def zoom_features_pipeline(args) -> pd.DataFrame:
     grid = make_center_grid(h, w, DEVICE, FLOW_STRIDE)
 
     batch = [frame]
-    features = [{"frame": 0, "mag": 0.0, "ang": 0.0, "zoom": 0.0}]
+    features = [
+        {"frame": 0, "flow_mag_med": 0.0, "radial_med": 0.0, "radial_ratio": 0.0}
+    ]
 
     frame_idx = 1
 
