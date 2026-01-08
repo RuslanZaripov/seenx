@@ -11,5 +11,6 @@
     "clip_model": "openai/clip-vit-base-patch32",
     "batch_size": 4,
     "device": "cpu",
-    "optical_flow_model": "static/weights/raft-small.pth"
+    "optical_flow_model": "static/weights/raft-small.pth",
+    "shot_bound_shift_frames": 2
 }
