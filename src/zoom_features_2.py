@@ -32,7 +32,7 @@ from utils.utils import InputPadder
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 DOWNSCALE = 0.5
-BATCH_SIZE = 32
+BATCH_SIZE = 64
 FLOW_STRIDE = 8
 
 
