@@ -183,7 +183,7 @@ class SpeakerProbabilityPass(VideoFeaturePass):
                 [0.0] * len(df), index=df.index, dtype=object
             )
 
-        for frames, indices in tqdm(dataset, desc="Extract speaker probs..."):
+        for frames, indices in tqdm(dataset, desc="Extract speaker probs"):
             h, w, _ = frames[0].shape
             batch_boxes = self.use_face_detector(frames)
             padded_boxes = pad_boxes_square(batch_boxes, w, h)
@@ -199,7 +199,7 @@ class SpeakerProbabilityPass(VideoFeaturePass):
         )
 
         actual_speaker_embedding = self.speaker_face_embedding()
-        for frames, indices in tqdm(dataset, desc="Extract speaker embeddings..."):
+        for frames, indices in tqdm(dataset, desc="Extract speaker embeddings"):
             embeddings = self.arcface_client.forward(frames)
             embeddings = np.array(embeddings)
             for i, frame_idx in enumerate(indices):
@@ -280,7 +280,7 @@ class FaceScreenRatioFeaturePass(VideoFeaturePass):
                 [None] * len(df), index=df.index, dtype=object
             )
 
-        for frames, indices in tqdm(dataset, desc="Extract face screen ratio..."):
+        for frames, indices in tqdm(dataset, desc="Extract face screen ratio"):
             h, w, _ = frames[0].shape
             batch_boxes = self.use_face_detector(frames)
             for idx, boxes in zip(indices, batch_boxes):
@@ -321,7 +321,7 @@ class TextProbFeaturePass(VideoFeaturePass):
             transform=self.transform,
         )
 
-        for frames, indices in tqdm(dataset, desc="Extract text probs..."):
+        for frames, indices in tqdm(dataset, desc="Extract text probs"):
             results = self.ocr_reader.readtext_batched(
                 frames, batch_size=self.batch_size
             )
@@ -391,14 +391,14 @@ class MotionSpeedFeaturePass(VideoFeaturePass):
             )
 
         dataset = SpeakerFilteredVideoDataset(
-            speaker_probs=context["speaker_prob"],
+            speaker_probs=context["data"]["speaker_prob"].tolist(),
             threshold=self.speak_thr,
             video_path=video_path,
             batch_size=self.batch_size,
             transform=self.transform,
         )
 
-        for frames, indices in tqdm(dataset, desc="Extract motion speeds..."):
+        for frames, indices in tqdm(dataset, desc="Extract motion speeds"):
             batch_kps = self.use_pose_model(frames)
             for idx, kps in zip(indices, batch_kps):
                 context["data"].at[idx, "frame_keypoints"] = kps
@@ -472,7 +472,7 @@ class EmotionFeaturePass(VideoFeaturePass):
             transform=self.transform,
         )
 
-        for frames, indices in tqdm(dataset, desc="Extract emotions..."):
+        for frames, indices in tqdm(dataset, desc="Extract emotions"):
             results = self.pipe(frames)
             for i, res in enumerate(results):
                 for e in res:
@@ -530,7 +530,7 @@ class CinematicFeaturePass(VideoFeaturePass):
             txt_feat = self.model.get_text_features(**text_inputs)
             txt_feat = txt_feat / txt_feat.norm(dim=-1, keepdim=True)
 
-            for frames, indices in tqdm(dataset, desc="Extract cinematic probs..."):
+            for frames, indices in tqdm(dataset, desc="Extract cinematic probs"):
                 inputs = self.processor(
                     images=frames,
                     return_tensors="pt",
