@@ -283,7 +283,8 @@ class FaceScreenRatioFeaturePass(VideoFeaturePass):
         for frames, indices in tqdm(dataset, desc="Extract face screen ratio"):
             h, w, _ = frames[0].shape
             batch_boxes = self.use_face_detector(frames)
-            for idx, boxes in zip(indices, batch_boxes):
+            padded_boxes = pad_boxes_square(batch_boxes, w, h)
+            for idx, boxes in zip(indices, padded_boxes):
                 context["data"].at[idx, "frame_face_boxes"] = boxes
                 if len(boxes) == 0:
                     ratio = 0.0
