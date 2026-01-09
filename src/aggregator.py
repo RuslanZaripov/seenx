@@ -80,7 +80,7 @@ def aggregate(
             EmotionFeaturePass(config),
             CinematicFeaturePass(config),
         ],
-        existing_features=existing_features,
+        existing_features=set(existing_features),
     )
 
     logger.info("Extracting sound features")
