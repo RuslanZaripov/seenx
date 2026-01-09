@@ -47,6 +47,7 @@ def run_feature_pipeline(
     vid_cap.release()
 
     context["data"] = pd.DataFrame({"frame_idx": list(range(total_frames))})
+    context["data"]["frame_idx"] = context["data"]["frame_idx"].astype("int32")
 
     shift = config.get("shot_bound_shift_frames")
     shot_bounds = batch_shot_segmentation(video_path, config.get("shot_segmentor"))
@@ -181,7 +182,7 @@ class SpeakerProbabilityPass(VideoFeaturePass):
 
         if "speaker_prob" not in df.columns:
             df["speaker_prob"] = pd.Series(
-                [0.0] * len(df), index=df.index, dtype=object
+                [0.0] * len(df), index=df.index, dtype="float64"
             )
 
         for frames, indices in tqdm(dataset, desc="Extract speaker probs"):
@@ -273,7 +274,7 @@ class FaceScreenRatioFeaturePass(VideoFeaturePass):
         df = context["data"]
         if "face_screen_ratio" not in df.columns:
             df["face_screen_ratio"] = pd.Series(
-                [0.0] * len(df), index=df.index, dtype=object
+                [0.0] * len(df), index=df.index, dtype="float64"
             )
 
         if "frame_face_boxes" not in df.columns:
@@ -323,7 +324,7 @@ class TextProbFeaturePass(VideoFeaturePass):
             df["text_prob"] = pd.Series(
                 np.nan,
                 index=df.index,
-                dtype="float32",  # or float64
+                dtype="float64",  # or float64
             )
 
         dataset = VideoBatchDataset(
@@ -408,7 +409,7 @@ class MotionSpeedFeaturePass(VideoFeaturePass):
 
         if "motion_speed" not in df.columns:
             df["motion_speed"] = pd.Series(
-                [0.0] * len(df), index=df.index, dtype=object
+                [0.0] * len(df), index=df.index, dtype="float64"
             )
 
         dataset = SpeakerFilteredVideoDataset(
@@ -499,7 +500,9 @@ class EmotionFeaturePass(VideoFeaturePass):
                 emotions[e["label"]][idx] = float(e["score"])
 
         for key in emotions:
-            context["data"][key] = pd.Series(emotions[key], index=context["data"].index)
+            context["data"][key] = pd.Series(
+                emotions[key], index=context["data"].index, dtype="float64"
+            )
 
 
 class CinematicFeaturePass(VideoFeaturePass):
@@ -532,6 +535,14 @@ class CinematicFeaturePass(VideoFeaturePass):
         return frame[np.newaxis, :, :, :]
 
     def run(self, video_path, context):
+        df = context["data"]
+        if "cinematic" not in df.columns:
+            df["cinematic"] = pd.Series(
+                [0.0] * len(df),
+                index=df.index,
+                dtype="float64",
+            )
+
         dataset = VideoBatchDataset(
             video_path=video_path,
             batch_size=self.batch_size,
@@ -566,7 +577,7 @@ class CinematicFeaturePass(VideoFeaturePass):
 
                 for i, frame_idx in enumerate(indices):
                     cinematic_prob = float(probs[i, 0])
-                    context["data"].at[frame_idx, "cinematic"] = cinematic_prob
+                    df.at[frame_idx, "cinematic"] = cinematic_prob
 
 
 if __name__ == "__main__":

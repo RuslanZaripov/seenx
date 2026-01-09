@@ -82,6 +82,11 @@ def aggregate(
         ],
         existing_features=set(existing_features),
     )
+    # drop columns frame_face_boxes, frame_keypoints, frame_idx
+    speaker_features = speaker_features.drop(
+        columns=["frame_face_boxes", "frame_keypoints"],
+        errors="ignore",
+    )
 
     logger.info("Extracting sound features")
     sound_features = sound_features_pipeline(
@@ -116,10 +121,11 @@ def aggregate(
             return pd.DataFrame(index=retention.index)
         mapped = pd.DataFrame(index=retention.index)
         for col in features.columns:
+            fp = features[col].astype("float64").values
             mapped[col] = np.interp(
-                np.linspace(0, len(features.index), len(retention.index)),
-                np.arange(len(features.index)),
-                features[col].values,
+                np.linspace(0, len(features) - 1, len(retention)),
+                np.arange(len(features)),
+                fp,
             )
         return mapped
 
