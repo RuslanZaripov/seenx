@@ -449,8 +449,7 @@ class EmotionFeaturePass(VideoFeaturePass):
     ) -> Image.Image:
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frame = resize_crop_center_np(frame, 640)
-        pil_img = Image.fromarray(frame)
-        return pil_img
+        return frame[np.newaxis, :, :, :]
 
     def run(self, video_path, context):
         total_frames = len(context["data"])
@@ -480,6 +479,7 @@ class EmotionFeaturePass(VideoFeaturePass):
         )
 
         for frames, indices in tqdm(dataset, desc="Extract emotions"):
+            frames = [Image.fromarray(frame) for frame in frames]
             results = self.pipe(frames)
             for i, res in enumerate(results):
                 for e in res:
