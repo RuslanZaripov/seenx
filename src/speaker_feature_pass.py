@@ -320,7 +320,11 @@ class TextProbFeaturePass(VideoFeaturePass):
         # initialize text_prob column
         df = context["data"]
         if "text_prob" not in df.columns:
-            df["text_prob"] = pd.Series([None] * len(df), index=df.index, dtype=object)
+            df["text_prob"] = pd.Series(
+                np.nan,
+                index=df.index,
+                dtype="float32",  # or float64
+            )
 
         dataset = VideoBatchDataset(
             video_path=video_path,
