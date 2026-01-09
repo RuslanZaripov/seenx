@@ -317,10 +317,16 @@ class TextProbFeaturePass(VideoFeaturePass):
         return frame[np.newaxis, :, :, :]
 
     def run(self, video_path, context):
+        # initialize text_prob column
+        df = context["data"]
+        if "text_prob" not in df.columns:
+            df["text_prob"] = pd.Series([None] * len(df), index=df.index, dtype=object)
+
         dataset = VideoBatchDataset(
             video_path=video_path,
             batch_size=self.batch_size,
             transform=self.transform,
+            stride=5,  # process every 5th frame
         )
 
         for frames, indices in tqdm(dataset, desc="Extract text probs"):
@@ -330,6 +336,8 @@ class TextProbFeaturePass(VideoFeaturePass):
             for i, res in enumerate(results):
                 text_prob = float(np.mean([c for _, _, c in res])) if res else 0.0
                 context["data"].at[indices[i], "text_prob"] = text_prob
+
+        context["data"]["text_prob"] = context["data"]["text_prob"].ffill().bfill()
 
 
 class MotionSpeedFeaturePass(VideoFeaturePass):
@@ -580,8 +588,8 @@ if __name__ == "__main__":
         passes=[
             SpeakerProbabilityPass(config),
             FaceScreenRatioFeaturePass(config),
-            # TextProbFeaturePass(config),
-            # MotionSpeedFeaturePass(config),
+            TextProbFeaturePass(config),
+            MotionSpeedFeaturePass(config),
             EmotionFeaturePass(config),
             CinematicFeaturePass(config),
         ],
@@ -589,3 +597,4 @@ if __name__ == "__main__":
     )
 
     print(features_df)
+    features_df.to_csv("features.csv", index=False)
