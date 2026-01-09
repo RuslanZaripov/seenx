@@ -580,7 +580,7 @@ if __name__ == "__main__":
             SpeakerProbabilityPass(config),
             # FaceScreenRatioFeaturePass(config),
             # TextProbFeaturePass(config),
-            MotionSpeedFeaturePass(config),
+            # MotionSpeedFeaturePass(config),
             EmotionFeaturePass(config),
             CinematicFeaturePass(config),
         ],
