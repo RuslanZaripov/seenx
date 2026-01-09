@@ -156,8 +156,12 @@ class FaceCropVideoDataset(VideoBatchDataset):
         )
         assert frame.shape[0] == 1, f"Expected batch size B == 1, got {frame.shape[0]}"
 
+        boxes = self.crop_boxes[frame_idx]
+        if len(boxes) == 0:
+            return np.empty((0, 112, 112, 3), dtype=frame.dtype)
+
         crops = []
-        for b in self.crop_boxes[frame_idx].tolist():
+        for b in boxes.tolist():
             x1, y1, x2, y2 = b
             crop = cv2.resize(
                 frame[0][y1:y2, x1:x2], (112, 112), interpolation=cv2.INTER_LINEAR
