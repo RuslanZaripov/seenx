@@ -157,7 +157,7 @@ class FaceCropVideoDataset(VideoBatchDataset):
         assert frame.shape[0] == 1, f"Expected batch size B == 1, got {frame.shape[0]}"
 
         boxes = self.crop_boxes[frame_idx]
-        if len(boxes) == 0:
+        if boxes is None or len(boxes) == 0:
             return np.empty((0, 112, 112, 3), dtype=frame.dtype)
 
         crops = []
