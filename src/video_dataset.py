@@ -1,3 +1,4 @@
+from PIL import Image
 from typing import Callable, Optional, List, Union
 import cv2
 from torch.utils.data import IterableDataset
@@ -90,7 +91,6 @@ class VideoBatchDataset(IterableDataset):
                 indices.extend([frame_idx] * len(frame))
 
                 if len(frames) == self.batch_size:
-                    # stack and yield
                     yield np.concatenate(frames, axis=0), indices
                     frames, indices = [], []
 
@@ -171,3 +171,17 @@ class FaceCropVideoDataset(VideoBatchDataset):
 
     def accept_frame(self, frame_idx: int) -> bool:
         return frame_idx in self.frame_ids
+
+
+class EmotionIterableDataset(IterableDataset):
+    def __init__(self, video_dataset: VideoBatchDataset):
+        self.video_dataset = video_dataset
+
+    def __iter__(self):
+        for frames, indices in self.video_dataset:
+            # frames: (N, H, W, C)
+            for frame, idx in zip(frames, indices):
+                yield {
+                    "image": Image.fromarray(frame),
+                    "frame_idx": idx,
+                }

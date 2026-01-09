@@ -8,6 +8,7 @@ from config import Config
 from shot_segmentation import batch_shot_segmentation
 from seenx_utils import resize_crop_center_np
 from video_dataset import (
+    EmotionIterableDataset,
     FaceCropVideoDataset,
     SpeakerFilteredVideoDataset,
     SpecificFramesVideoDataset,
@@ -455,13 +456,8 @@ class EmotionFeaturePass(VideoFeaturePass):
     def run(self, video_path, context):
         total_frames = len(context["data"])
         emotions = {
-            "angry": [0.0] * total_frames,
-            "disgust": [0.0] * total_frames,
-            "fear": [0.0] * total_frames,
-            "happy": [0.0] * total_frames,
-            "sad": [0.0] * total_frames,
-            "surprise": [0.0] * total_frames,
-            "neutral": [0.0] * total_frames,
+            k: [0.0] * total_frames
+            for k in ["angry", "disgust", "fear", "happy", "sad", "surprise", "neutral"]
         }
 
         # frame_ids where speaker_prob >= threshold
@@ -479,12 +475,15 @@ class EmotionFeaturePass(VideoFeaturePass):
             transform=self.transform,
         )
 
-        for frames, indices in tqdm(dataset, desc="Extract emotions"):
-            frames = [Image.fromarray(frame) for frame in frames]
-            results = self.pipe(frames)
-            for i, res in enumerate(results):
-                for e in res:
-                    emotions[e["label"]][indices[i]] = float(e["score"])
+        outputs = self.pipe(
+            EmotionIterableDataset(dataset),
+            batch_size=self.batch_size,
+        )
+
+        for out in outputs:
+            idx = out["frame_idx"]
+            for e in out:
+                emotions[e["label"]][idx] = float(e["score"])
 
         for key in emotions:
             context["data"][key] = pd.Series(emotions[key], index=context["data"].index)
