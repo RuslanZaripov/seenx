@@ -475,13 +475,14 @@ class EmotionFeaturePass(VideoFeaturePass):
             transform=self.transform,
         )
 
+        emotion_ds = EmotionIterableDataset(dataset)
+
         outputs = self.pipe(
-            EmotionIterableDataset(dataset),
+            emotion_ds,
             batch_size=self.batch_size,
         )
 
-        for out in outputs:
-            idx = out["frame_idx"]
+        for out, idx in zip(outputs, emotion_ds.indices):
             for e in out:
                 emotions[e["label"]][idx] = float(e["score"])
 

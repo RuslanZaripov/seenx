@@ -174,14 +174,13 @@ class FaceCropVideoDataset(VideoBatchDataset):
 
 
 class EmotionIterableDataset(IterableDataset):
-    def __init__(self, video_dataset: VideoBatchDataset):
+    def __init__(self, video_dataset):
         self.video_dataset = video_dataset
+        self.indices = []  # side channel
 
     def __iter__(self):
+        self.indices.clear()
         for frames, indices in self.video_dataset:
-            # frames: (N, H, W, C)
             for frame, idx in zip(frames, indices):
-                yield {
-                    "image": Image.fromarray(frame),
-                    "frame_idx": idx,
-                }
+                self.indices.append(idx)
+                yield Image.fromarray(frame)
