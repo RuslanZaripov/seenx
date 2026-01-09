@@ -5,7 +5,7 @@ import os
 from logger import Logger
 from speaker_features import speaker_features_pipeline
 from sound_features import sound_features_pipeline, get_vocal_music_features
-from src.speaker_feature_pass import (
+from speaker_feature_pass import (
     CinematicFeaturePass,
     EmotionFeaturePass,
     FaceScreenRatioFeaturePass,
