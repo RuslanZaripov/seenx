@@ -1,6 +1,6 @@
 import torch
 import einops
-from mm.mm_constants import NUM_FRAMES
+from mm_constants import NUM_FRAMES
 
 
 def temporal_aggregator(mm_projector, config, frames_features):
