@@ -25,11 +25,11 @@ def add_path(path):
 
 
 ROOT = os.getcwd()
-path = os.path.join(ROOT, "VideoLLaMA2/videollama2/model")
+path = os.path.join(ROOT, "VideoLLaMA2/videollama2")
 logger.info(f"Adding {path} to sys.path")
 add_path(path)
 
-from beats.BEATs import BEATsConfig, BEATs
+from model.beats.BEATs import BEATsConfig, BEATs
 
 
 class CLIPVisionTower(nn.Module):
