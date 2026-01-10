@@ -8,6 +8,7 @@ from subprocess import CalledProcessError, run
 from PIL import Image
 from decord import VideoReader, cpu
 from .mm_constants import NUM_FRAMES, MAX_FRAMES
+from pytorchvideo.data.clip_sampling import ConstantClipsPerVideoSampler
 from ..logger import Logger
 
 logger = Logger(show=True).get_logger()
@@ -101,6 +102,8 @@ def process_video(
         frame_indices = list(range(f_start, f_end + 1))
 
         duration = len(frame_indices)  # duration in frames
+        logger.info(f"Processing frames from {f_start} to {f_end}, total {duration}")
+
         # 3. Sampling frame indices
         if num_frames is None:
             sampled_frame_indices = [
@@ -286,8 +289,6 @@ def process_audio_from_video(
         waveform = torch.zeros(480000)
         waveform = waveform.numpy()
         sr = 16000
-
-    from pytorchvideo.data.clip_sampling import ConstantClipsPerVideoSampler
 
     clip_sampler = ConstantClipsPerVideoSampler(
         clip_duration=2, clips_per_video=clips_per_video

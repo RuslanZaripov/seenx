@@ -15,6 +15,7 @@ from transformers import (
 
 from ..logger import Logger
 from pathlib import Path
+from typing import Tuple
 
 logger = Logger(show=True).get_logger()
 
@@ -199,7 +200,9 @@ def build_vision_tower(vision_tower_cfg, **kwargs):
     return vision_tower
 
 
-def build_audio_tower(audio_tower_cfg, delay_load=False, **kwargs):
+def build_audio_tower(
+    audio_tower_cfg, delay_load=False, **kwargs
+) -> Tuple[nn.Module, BEATsConfig]:
     audio_tower = getattr(
         audio_tower_cfg,
         "mm_audio_tower",

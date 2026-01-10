@@ -21,29 +21,38 @@ from ..logger import Logger
 logger = Logger(show=True).get_logger()
 
 
-def pipeline_demo(args):
+def unfreeze_module(module: torch.nn.Module):
+    for p in module.parameters():
+        p.requires_grad = True
+
+
+def multimodal_features(video_path: str):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    video_path = args.video_path
 
     working_dir = os.getcwd()
     model_path = "DAMO-NLP-SG/VideoLLaMA2.1-7B-AV"
     config = AutoConfig.from_pretrained(model_path)
     config.mm_audio_tower = f"{working_dir}/audio_tower.bin"
     config.mm_vision_tower = "google/siglip-so400m-patch14-384"
+    logger.info(f"Configuration loaded: {config}")
 
     logger.info("Loading vision tower...")
     num_frames = config.num_frames if hasattr(config, "num_frames") else NUM_FRAMES
     vision_tower = build_vision_tower(config).half().to(device)
+    vision_tower.requires_grad_(False)
 
     logger.info("Building vision projector...")
     mm_projector = build_vision_projector(config).half().to(device)
+    unfreeze_module(mm_projector)
 
     logger.info("Loading audio tower...")
     audio_tower, audio_tower_cfg = build_audio_tower(config)
     audio_tower = audio_tower.half().to(device)
+    audio_tower.requires_grad_(False)
 
     logger.info("Building audio projector...")
     mm_projector_a = build_audio_projector(config).half().to(device)
+    unfreeze_module(mm_projector_a)
 
     processor = {
         "video": partial(
@@ -117,6 +126,7 @@ def pipeline_demo(args):
             raise NotImplementedError
 
     print("Multimodal features shape:", mm_features[0].shape)
+    return mm_features
 
 
 if __name__ == "__main__":
@@ -129,4 +139,4 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    pipeline_demo(args)
+    mm_features = multimodal_features(video_path=args.video_path)
