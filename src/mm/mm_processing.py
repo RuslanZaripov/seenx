@@ -9,11 +9,6 @@ from PIL import Image
 from decord import VideoReader, cpu
 
 
-NUM_FRAMES = 8
-MAX_FRAMES = 32
-NUM_FRAMES_PER_SECOND = 1
-
-
 def expand2square(pil_img, background_color):
     """Expand PIL image to a square image by padding the shorter side."""
     width, height = pil_img.size
@@ -166,7 +161,12 @@ def process_video(
     if va:
         # Calculate the duration of the video in seconds
         video_duration_seconds = num_frames_of_video / fps
-        audio = process_audio_from_video(video_path, video_duration_seconds)
+        # audio = process_audio_from_video(video_path, video_duration_seconds)
+        audio = process_audio_from_video_range(
+            video_path,
+            s if s is not None else 0.0,
+            e if e is not None else video_duration_seconds,
+        )
         video = {"video": video, "audio": audio}
 
     return video
