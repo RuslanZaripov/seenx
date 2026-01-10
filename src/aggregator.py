@@ -3,7 +3,6 @@ import argparse
 import pandas as pd
 import os
 from logger import Logger
-from speaker_features import speaker_features_pipeline
 from sound_features import sound_features_pipeline, get_vocal_music_features
 from speaker_feature_pass import (
     CinematicFeaturePass,
