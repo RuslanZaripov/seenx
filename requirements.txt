@@ -8,10 +8,13 @@ opencv-python-headless==4.11.0.86
 ultralytics==8.3.248
 einops==0.8.1
 tqdm==4.67.1
+
+# VideoLLaMA2 dependencies
 decord==0.6.0
 timm==1.0.19
 pytorchvideo==0.1.5
 iopath==0.1.10
+portalocker==3.2.0
 
 # demucs minimal dependencies
 dora-search>=0.1.12
