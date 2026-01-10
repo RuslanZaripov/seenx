@@ -53,7 +53,8 @@ def pipeline_demo(args):
             num_frames=num_frames,
         ),
     }
-    image_or_video = processor["video"](video_path, va=True)
+    logger.info("Processing video...")
+    image_or_video = processor["video"](video_path, s=0, e=10, va=True)
 
     tensor = {k: v.half().to(device) for k, v in image_or_video.items()}
     tensor = [(tensor, "video")]
@@ -82,6 +83,7 @@ def pipeline_demo(args):
             else:
                 raise NotImplementedError
 
+    logger.info("Encoding multimodal features...")
     if len(X_audio) > 0:
         Xa_features = torch.cat(X_audio, dim=0)
         audio_padding_mask = torch.zeros(Xa_features.shape, device=device).bool()
