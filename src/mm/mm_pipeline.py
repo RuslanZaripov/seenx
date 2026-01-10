@@ -16,6 +16,9 @@ from .mm_projector import (
     build_audio_projector,
 )
 from .mm_arch import encode_images_or_videos
+from ..logger import Logger
+
+logger = Logger(show=True).get_logger()
 
 
 def pipeline_demo(args):
@@ -27,14 +30,19 @@ def pipeline_demo(args):
     config = AutoConfig.from_pretrained(model_path)
     config.mm_audio_tower = f"{working_dir}/audio_tower.bin"
     config.mm_vision_tower = "google/siglip-so400m-patch14-384"
-    # print(config)
 
+    logger.info("Loading vision tower...")
     num_frames = config.num_frames if hasattr(config, "num_frames") else NUM_FRAMES
     vision_tower = build_vision_tower(config).half().to(device)
+
+    logger.info("Building vision projector...")
     mm_projector = build_vision_projector(config).half().to(device)
 
+    logger.info("Loading audio tower...")
     audio_tower, audio_tower_cfg = build_audio_tower(config)
     audio_tower = audio_tower.half().to(device)
+
+    logger.info("Building audio projector...")
     mm_projector_a = build_audio_projector(config).half().to(device)
 
     processor = {
