@@ -9,7 +9,7 @@ from ..logger import Logger
 logger = Logger(show=True).get_logger()
 
 
-class FrameFeaturePass(VideoFeaturePass):
+class FrameQualityFeaturePass(VideoFeaturePass):
     def __init__(self, config: Config):
         self.config = config
 
@@ -30,7 +30,7 @@ class FrameFeaturePass(VideoFeaturePass):
 
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-        pbar = tqdm(total=total_frames, desc="Extracting Frame Quality Features")
+        pbar = tqdm(total=total_frames, desc="Extract frame quality")
         while True:
             ret, frame = cap.read()
             if not ret:

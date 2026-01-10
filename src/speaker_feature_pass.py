@@ -12,7 +12,7 @@ from .extractors import (
     MotionSpeedFeaturePass,
     SpeakerProbabilityPass,
     TextProbFeaturePass,
-    FrameFeaturePass,
+    FrameQualityFeaturePass,
     VideoFeaturePass,
 )
 
@@ -75,7 +75,7 @@ if __name__ == "__main__":
         args.video,
         config,
         passes=[
-            FrameFeaturePass(config),
+            FrameQualityFeaturePass(config),
             SpeakerProbabilityPass(config),
             FaceScreenRatioFeaturePass(config),
             TextProbFeaturePass(config),

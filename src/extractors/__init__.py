@@ -4,7 +4,7 @@ from .face_screen_feature import FaceScreenRatioFeaturePass
 from .motion_feature import MotionSpeedFeaturePass
 from .speaker_prob_feature import SpeakerProbabilityPass
 from .text_prob_feature import TextProbFeaturePass
-from .frame_feature import FrameFeaturePass
+from .frame_feature import FrameQualityFeaturePass
 from .feature_extractor import VideoFeaturePass
 
 __all__ = [
@@ -14,6 +14,6 @@ __all__ = [
     "MotionSpeedFeaturePass",
     "SpeakerProbabilityPass",
     "TextProbFeaturePass",
-    "FrameFeaturePass",
+    "FrameQualityFeaturePass",
     "VideoFeaturePass",
 ]

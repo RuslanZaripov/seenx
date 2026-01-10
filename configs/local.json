@@ -12,5 +12,6 @@
     "batch_size": 4,
     "device": "cpu",
     "optical_flow_model": "static/weights/raft-small.pth",
-    "shot_bound_shift_frames": 2
+    "shot_bound_shift_frames": 2,
+    "text_prob_stride": 10
 }

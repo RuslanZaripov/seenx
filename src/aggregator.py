@@ -12,6 +12,7 @@ from speaker_feature_pass import (
     MotionSpeedFeaturePass,
     SpeakerProbabilityPass,
     TextProbFeaturePass,
+    FrameQualityFeaturePass,
     run_feature_pipeline,
 )
 from zoom_features_2 import zoom_features_pipeline
@@ -73,6 +74,7 @@ def aggregate(
         video_path,
         config,
         passes=[
+            FrameQualityFeaturePass(config),
             SpeakerProbabilityPass(config),
             FaceScreenRatioFeaturePass(config),
             TextProbFeaturePass(config),
