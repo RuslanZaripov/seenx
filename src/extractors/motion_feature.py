@@ -1,11 +1,11 @@
-import torch
-from ultralytics import YOLO
-from config import Config
-from feature_extractor import VideoFeaturePass
 import cv2
+import torch
 import numpy as np
-from tqdm import tqdm
 import pandas as pd
+from ultralytics import YOLO
+from tqdm import tqdm
+from .feature_extractor import VideoFeaturePass
+from ..config import Config
 from ..seenx_utils import resize_crop_center_np
 from ..video_dataset import SpeakerFilteredVideoDataset
 

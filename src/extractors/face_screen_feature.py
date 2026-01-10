@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 import cv2
 from tqdm import tqdm
-from config import Config
-from feature_extractor import VideoFeaturePass
+from .feature_extractor import VideoFeaturePass
+from ..config import Config
 from ..seenx_utils import resize_crop_center_np, pad_boxes_square
 from ..video_dataset import SpeakerFilteredVideoDataset
 

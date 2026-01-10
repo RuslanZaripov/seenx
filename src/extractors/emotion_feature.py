@@ -4,8 +4,8 @@ import pandas as pd
 import cv2
 from PIL import Image
 from transformers import pipeline
-from config import Config
-from feature_extractor import VideoFeaturePass
+from .feature_extractor import VideoFeaturePass
+from ..config import Config
 from ..seenx_utils import resize_crop_center_np
 from ..video_dataset import FaceCropVideoDataset, EmotionIterableDataset
 

@@ -1,11 +1,11 @@
+import cv2
 import torch
 import numpy as np
-from ultralytics import YOLO
-import cv2
-from tqdm import tqdm
 import pandas as pd
-from config import Config
-from feature_extractor import VideoFeaturePass
+from tqdm import tqdm
+from ultralytics import YOLO
+from .feature_extractor import VideoFeaturePass
+from ..config import Config
 from ..arcface_client import ArcFaceClient
 from ..video_dataset import SpecificFramesVideoDataset, FaceCropVideoDataset
 from ..seenx_utils import resize_crop_center_np, pad_boxes_square
