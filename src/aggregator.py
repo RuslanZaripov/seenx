@@ -1,10 +1,15 @@
-import numpy as np
-import argparse
-import pandas as pd
 import os
-from logger import Logger
-from sound_features import sound_features_pipeline, get_vocal_music_features
-from speaker_feature_pass import (
+import argparse
+import numpy as np
+import pandas as pd
+from .logger import Logger
+from .config import Config
+from .sound_features import sound_features_pipeline, get_vocal_music_features
+from .zoom_features_2 import zoom_features_pipeline
+from .parse_retention import parse_retention
+from .transcribe import collect_wps
+from .seenx_utils import get_video_duration
+from .extractors import (
     CinematicFeaturePass,
     EmotionFeaturePass,
     FaceScreenRatioFeaturePass,
@@ -12,13 +17,10 @@ from speaker_feature_pass import (
     SpeakerProbabilityPass,
     TextProbFeaturePass,
     FrameQualityFeaturePass,
+)
+from .speaker_features import (
     run_feature_pipeline,
 )
-from zoom_features_2 import zoom_features_pipeline
-from parse_retention import parse_retention
-from transcribe import collect_wps
-from seenx_utils import get_video_duration
-from config import Config
 
 logger = Logger(show=True).get_logger()
 
@@ -64,11 +66,6 @@ def aggregate(
         retention = existing_df[["retention"]]
 
     logger.info("Extracting speaker features")
-    # speaker_features = speaker_features_pipeline(
-    #     video_path=video_path,
-    #     config=config,
-    #     existing_features=existing_features,
-    # )
     speaker_features = run_feature_pipeline(
         video_path,
         config,
