@@ -14,7 +14,7 @@ from transformers import (
 )
 
 from ..logger import Logger
-
+from pathlib import Path
 
 logger = Logger(show=True).get_logger()
 
@@ -24,12 +24,12 @@ def add_path(path):
         sys.path.insert(0, path)
 
 
-ROOT = os.getcwd()
-path = os.path.join(ROOT, "VideoLLaMA2")
+ROOT = Path(os.getcwd()).parent.absolute()
+path = str(ROOT / "VideoLLaMA2" / "videollama2" / "model")
 logger.info(f"Adding {path} to sys.path")
 add_path(path)
 
-from videollama2.model.beats.BEATs import BEATsConfig, BEATs
+from beats.BEATs import BEATsConfig, BEATs
 
 
 class CLIPVisionTower(nn.Module):
