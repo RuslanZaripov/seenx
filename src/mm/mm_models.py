@@ -13,7 +13,7 @@ from transformers import (
     SiglipVisionConfig,
 )
 
-from logger import Logger
+from src.logger import Logger
 
 
 logger = Logger(show=True).get_logger()
