@@ -3,19 +3,19 @@ import argparse
 import torch
 from functools import partial
 from transformers import AutoConfig
-from mm_constants import NUM_FRAMES
-from mm_processing import (
+from .mm_constants import NUM_FRAMES
+from .mm_processing import (
     process_video,
 )
-from mm_models import (
+from .mm_models import (
     build_vision_tower,
     build_audio_tower,
 )
-from mm_projector import (
+from .mm_projector import (
     build_vision_projector,
     build_audio_projector,
 )
-from mm_arch import encode_images_or_videos
+from .mm_arch import encode_images_or_videos
 
 
 def pipeline_demo(args):

@@ -7,7 +7,7 @@ import torchaudio.compliance.kaldi as ta_kaldi
 from subprocess import CalledProcessError, run
 from PIL import Image
 from decord import VideoReader, cpu
-from mm_constants import NUM_FRAMES, MAX_FRAMES
+from .mm_constants import NUM_FRAMES, MAX_FRAMES
 
 
 def expand2square(pil_img, background_color):
