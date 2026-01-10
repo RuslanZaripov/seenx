@@ -8,6 +8,7 @@ opencv-python-headless==4.11.0.86
 ultralytics==8.3.248
 einops==0.8.1
 tqdm==4.67.1
+decord==0.6.0
 
 # demucs minimal dependencies
 dora-search>=0.1.12
