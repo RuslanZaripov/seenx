@@ -331,7 +331,7 @@ class TextProbFeaturePass(VideoFeaturePass):
             video_path=video_path,
             batch_size=self.batch_size,
             transform=self.transform,
-            stride=5,  # process every 5th frame
+            stride=10,  # process every 10th frame
         )
 
         for frames, indices in tqdm(dataset, desc="Extract text probs"):
