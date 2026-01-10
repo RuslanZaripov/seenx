@@ -2,7 +2,7 @@ import pandas as pd
 import cv2
 import numpy as np
 from tqdm import tqdm
-from feature_extractor import VideoFeaturePass
+from .feature_extractor import VideoFeaturePass
 from ..config import Config
 from ..logger import Logger
 
