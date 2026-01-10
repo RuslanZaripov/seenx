@@ -25,7 +25,7 @@ def add_path(path):
 
 
 ROOT = os.getcwd()
-path = os.path.join(ROOT, "VideoLLaMA2/model/beats")
+path = os.path.join(ROOT, "VideoLLaMA2/videollama2/model/beats")
 logger.info(f"Adding {path} to sys.path")
 add_path(path)
 
