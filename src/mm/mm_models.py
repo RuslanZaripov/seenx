@@ -189,7 +189,6 @@ def build_vision_tower(vision_tower_cfg, **kwargs):
         "mm_vision_tower",
         getattr(vision_tower_cfg, "vision_tower", None),
     )
-    vision_tower = "google/siglip-so400m-patch14-384"
     if "clip" in vision_tower:
         vision_tower = CLIPVisionTower(vision_tower, args=vision_tower_cfg, **kwargs)
     elif "siglip" in vision_tower:
@@ -206,7 +205,6 @@ def build_audio_tower(audio_tower_cfg, delay_load=False, **kwargs):
         "mm_audio_tower",
         getattr(audio_tower_cfg, "audio_tower", None),
     )
-    audio_tower = "/content/audio_tower.bin"
     if not delay_load:
         beats_checkpoint = torch.load(
             audio_tower, map_location="cpu", weights_only=False
