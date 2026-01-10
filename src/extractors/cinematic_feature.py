@@ -4,13 +4,13 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from transformers import CLIPProcessor, CLIPModel
-from .feature_extractor import VideoFeaturePass
+from .feature_extractor import VideoFeature
 from ..config import Config
 from ..video_dataset import VideoBatchDataset
 from ..seenx_utils import resize_crop_center_np
 
 
-class CinematicFeaturePass(VideoFeaturePass):
+class CinematicFeature(VideoFeature):
     def __init__(self, config: Config):
         self.device = torch.device(config.get("device"))
         self.batch_size = config.get("batch_size")

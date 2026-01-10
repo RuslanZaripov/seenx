@@ -6,14 +6,14 @@ from .config import Config
 from .shot_segmentation import batch_shot_segmentation
 from .logger import Logger
 from .extractors import (
-    CinematicFeaturePass,
-    EmotionFeaturePass,
-    FaceScreenRatioFeaturePass,
-    MotionSpeedFeaturePass,
-    SpeakerProbabilityPass,
-    TextProbFeaturePass,
-    FrameQualityFeaturePass,
-    VideoFeaturePass,
+    CinematicFeature,
+    EmotionFeature,
+    FaceScreenRatioFeature,
+    MotionSpeedFeature,
+    SpeakerProbabilityFeature,
+    TextProbFeature,
+    FrameQualityFeature,
+    VideoFeature,
 )
 
 logger = Logger(show=True).get_logger()
@@ -22,7 +22,7 @@ logger = Logger(show=True).get_logger()
 def run_feature_pipeline(
     video_path: str,
     config: Config,
-    passes: list[VideoFeaturePass],
+    passes: list[VideoFeature],
     existing_features: set,
 ) -> pd.DataFrame:
     context = {}
@@ -75,13 +75,13 @@ if __name__ == "__main__":
         args.video,
         config,
         passes=[
-            FrameQualityFeaturePass(config),
-            SpeakerProbabilityPass(config),
-            FaceScreenRatioFeaturePass(config),
-            TextProbFeaturePass(config),
-            MotionSpeedFeaturePass(config),
-            EmotionFeaturePass(config),
-            CinematicFeaturePass(config),
+            FrameQualityFeature(config),
+            SpeakerProbabilityFeature(config),
+            FaceScreenRatioFeature(config),
+            TextProbFeature(config),
+            MotionSpeedFeature(config),
+            EmotionFeature(config),
+            CinematicFeature(config),
         ],
         existing_features=set(),
     )

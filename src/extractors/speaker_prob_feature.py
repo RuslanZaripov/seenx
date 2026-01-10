@@ -4,14 +4,14 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from ultralytics import YOLO
-from .feature_extractor import VideoFeaturePass
+from .feature_extractor import VideoFeature
 from ..config import Config
 from ..arcface_client import ArcFaceClient
 from ..video_dataset import SpecificFramesVideoDataset, FaceCropVideoDataset
 from ..seenx_utils import resize_crop_center_np, pad_boxes_square
 
 
-class SpeakerProbabilityPass(VideoFeaturePass):
+class SpeakerProbabilityFeature(VideoFeature):
     def __init__(self, config: Config):
         self.device = torch.device(config.get("device"))
         self.face_detector = YOLO(config.get("face_detector")).to(self.device)

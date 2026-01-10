@@ -4,13 +4,13 @@ import numpy as np
 import pandas as pd
 from ultralytics import YOLO
 from tqdm import tqdm
-from .feature_extractor import VideoFeaturePass
+from .feature_extractor import VideoFeature
 from ..config import Config
 from ..seenx_utils import resize_crop_center_np
 from ..video_dataset import SpeakerFilteredVideoDataset
 
 
-class MotionSpeedFeaturePass(VideoFeaturePass):
+class MotionSpeedFeature(VideoFeature):
     def __init__(self, config: Config):
         self.device = torch.device(config.get("device"))
         self.pose_model = YOLO(config.get("pose_model")).to(self.device)

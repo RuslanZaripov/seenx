@@ -2,14 +2,14 @@ import pandas as pd
 import cv2
 import numpy as np
 from tqdm import tqdm
-from .feature_extractor import VideoFeaturePass
+from .feature_extractor import VideoFeature
 from ..config import Config
 from ..logger import Logger
 
 logger = Logger(show=True).get_logger()
 
 
-class FrameQualityFeaturePass(VideoFeaturePass):
+class FrameQualityFeature(VideoFeature):
     def __init__(self, config: Config):
         self.config = config
 

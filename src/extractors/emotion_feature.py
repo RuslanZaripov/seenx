@@ -4,13 +4,13 @@ import pandas as pd
 import cv2
 from PIL import Image
 from transformers import pipeline
-from .feature_extractor import VideoFeaturePass
+from .feature_extractor import VideoFeature
 from ..config import Config
 from ..seenx_utils import resize_crop_center_np
 from ..video_dataset import FaceCropVideoDataset, EmotionIterableDataset
 
 
-class EmotionFeaturePass(VideoFeaturePass):
+class EmotionFeature(VideoFeature):
     def __init__(self, config: Config):
         self.device = torch.device(config.get("device"))
         self.batch_size = config.get("batch_size")

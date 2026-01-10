@@ -4,13 +4,13 @@ import easyocr
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from .feature_extractor import VideoFeaturePass
+from .feature_extractor import VideoFeature
 from ..config import Config
 from ..video_dataset import VideoBatchDataset
 from ..seenx_utils import resize_crop_center_np
 
 
-class TextProbFeaturePass(VideoFeaturePass):
+class TextProbFeature(VideoFeature):
     def __init__(self, config: Config):
         self.ocr_reader = easyocr.Reader(["en"], gpu=torch.cuda.is_available())
         self.batch_size = config.get("batch_size")

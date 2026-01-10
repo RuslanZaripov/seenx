@@ -10,13 +10,13 @@ from .parse_retention import parse_retention
 from .transcribe import collect_wps
 from .seenx_utils import get_video_duration
 from .extractors import (
-    CinematicFeaturePass,
-    EmotionFeaturePass,
-    FaceScreenRatioFeaturePass,
-    MotionSpeedFeaturePass,
-    SpeakerProbabilityPass,
-    TextProbFeaturePass,
-    FrameQualityFeaturePass,
+    CinematicFeature,
+    EmotionFeature,
+    FaceScreenRatioFeature,
+    MotionSpeedFeature,
+    SpeakerProbabilityFeature,
+    TextProbFeature,
+    FrameQualityFeature,
 )
 from .speaker_features import (
     run_feature_pipeline,
@@ -70,13 +70,13 @@ def aggregate(
         video_path,
         config,
         passes=[
-            FrameQualityFeaturePass(config),
-            SpeakerProbabilityPass(config),
-            FaceScreenRatioFeaturePass(config),
-            TextProbFeaturePass(config),
-            MotionSpeedFeaturePass(config),
-            EmotionFeaturePass(config),
-            CinematicFeaturePass(config),
+            FrameQualityFeature(config),
+            SpeakerProbabilityFeature(config),
+            FaceScreenRatioFeature(config),
+            TextProbFeature(config),
+            MotionSpeedFeature(config),
+            EmotionFeature(config),
+            CinematicFeature(config),
         ],
         existing_features=set(existing_features),
     )

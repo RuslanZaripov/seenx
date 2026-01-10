@@ -1,19 +1,19 @@
-from .cinematic_feature import CinematicFeaturePass
-from .emotion_feature import EmotionFeaturePass
-from .face_screen_feature import FaceScreenRatioFeaturePass
-from .motion_feature import MotionSpeedFeaturePass
-from .speaker_prob_feature import SpeakerProbabilityPass
-from .text_prob_feature import TextProbFeaturePass
-from .frame_feature import FrameQualityFeaturePass
-from .feature_extractor import VideoFeaturePass
+from .cinematic_feature import CinematicFeature
+from .emotion_feature import EmotionFeature
+from .face_screen_feature import FaceScreenRatioFeature
+from .motion_feature import MotionSpeedFeature
+from .speaker_prob_feature import SpeakerProbabilityFeature
+from .text_prob_feature import TextProbFeature
+from .frame_feature import FrameQualityFeature
+from .feature_extractor import VideoFeature
 
 __all__ = [
-    "CinematicFeaturePass",
-    "EmotionFeaturePass",
-    "FaceScreenRatioFeaturePass",
-    "MotionSpeedFeaturePass",
-    "SpeakerProbabilityPass",
-    "TextProbFeaturePass",
-    "FrameQualityFeaturePass",
-    "VideoFeaturePass",
+    "CinematicFeature",
+    "EmotionFeature",
+    "FaceScreenRatioFeature",
+    "MotionSpeedFeature",
+    "SpeakerProbabilityFeature",
+    "TextProbFeature",
+    "FrameQualityFeature",
+    "VideoFeature",
 ]

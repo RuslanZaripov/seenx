@@ -1,4 +1,4 @@
-class VideoFeaturePass:
+class VideoFeature:
     def required_keys(self) -> set[str]:
         return set()
 

@@ -4,13 +4,13 @@ import numpy as np
 import pandas as pd
 import cv2
 from tqdm import tqdm
-from .feature_extractor import VideoFeaturePass
+from .feature_extractor import VideoFeature
 from ..config import Config
 from ..seenx_utils import resize_crop_center_np, pad_boxes_square
 from ..video_dataset import SpeakerFilteredVideoDataset
 
 
-class FaceScreenRatioFeaturePass(VideoFeaturePass):
+class FaceScreenRatioFeature(VideoFeature):
     def __init__(self, config: Config):
         self.device = torch.device(config.get("device"))
         self.face_detector = YOLO(config.get("face_detector")).to(self.device)
