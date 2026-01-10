@@ -2,9 +2,9 @@ import os
 import cv2
 import torch
 import numpy as np
-from transnetv2_pytorch import TransNetV2
 from tqdm import tqdm
-from logger import Logger
+from .logger import Logger
+from .transnetv2_pytorch import TransNetV2
 
 logger = Logger(show=True).get_logger()
 
