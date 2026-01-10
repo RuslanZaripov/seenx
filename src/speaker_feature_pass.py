@@ -2,12 +2,10 @@ import argparse
 import cv2
 import pandas as pd
 import numpy as np
-from config import Config
-from shot_segmentation import batch_shot_segmentation
-
-from logger import Logger
-from extractors.feature_extractor import VideoFeaturePass
-from extractors import (
+from .config import Config
+from .shot_segmentation import batch_shot_segmentation
+from .logger import Logger
+from .extractors import (
     CinematicFeaturePass,
     EmotionFeaturePass,
     FaceScreenRatioFeaturePass,
@@ -15,6 +13,7 @@ from extractors import (
     SpeakerProbabilityPass,
     TextProbFeaturePass,
     FrameFeaturePass,
+    VideoFeaturePass,
 )
 
 logger = Logger(show=True).get_logger()
