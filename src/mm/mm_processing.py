@@ -92,7 +92,7 @@ def process_video(
             fps = vreader.get_avg_fps()
             num_frames_of_video = len(vreader)
 
-        logger.info(f"Total frames loaded: {num_frames_of_video}")
+        logger.info(f"Video FPS: {fps}, total frames: {num_frames_of_video}")
 
         # 2. Determine frame range & Calculate frame indices
         max_frame_idx = num_frames_of_video - 1
