@@ -42,3 +42,40 @@ def resize_crop_center_np(frame: np.ndarray, size: int = 640) -> np.ndarray:
     frame = frame[top : top + size, left : left + size]
 
     return frame
+
+
+def pad_boxes_square(boxes, w, h, pad=0.25):
+    """
+    boxes: List[np.ndarray] of shape (N, 4)
+    returns: List[np.ndarray] of shape (N, 4) with square boxes
+    """
+    padded_boxes = []
+
+    for frame_boxes in boxes:
+        if len(frame_boxes) == 0:
+            padded_boxes.append(frame_boxes)
+            continue
+
+        frame_boxes = frame_boxes.astype(np.float32)
+
+        x1, y1, x2, y2 = frame_boxes.T
+        bw = x2 - x1
+        bh = y2 - y1
+
+        # square side = max(width, height)
+        side = np.maximum(bw, bh)
+
+        cx = (x1 + x2) / 2
+        cy = (y1 + y2) / 2
+
+        half = (1 + pad) * side / 2
+
+        x1_p = np.clip(cx - half, 0, w)
+        y1_p = np.clip(cy - half, 0, h)
+        x2_p = np.clip(cx + half, 0, w)
+        y2_p = np.clip(cy + half, 0, h)
+
+        padded = np.stack([x1_p, y1_p, x2_p, y2_p], axis=1).astype(np.int32)
+        padded_boxes.append(padded)
+
+    return padded_boxes

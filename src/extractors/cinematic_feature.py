@@ -5,6 +5,9 @@ import pandas as pd
 from tqdm import tqdm
 from ..config import Config
 from transformers import CLIPProcessor, CLIPModel
+from feature_extractor import VideoFeaturePass
+from ..video_dataset import VideoBatchDataset
+from ..seenx_utils import resize_crop_center_np
 
 
 class CinematicFeaturePass(VideoFeaturePass):
