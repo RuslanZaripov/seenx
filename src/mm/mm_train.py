@@ -26,51 +26,67 @@ def unfreeze_module(module: nn.Module):
         p.requires_grad = True
 
 
-class VideoRetentionDataset(Dataset):
+class MultiVideoRetentionDataset(Dataset):
     def __init__(
         self,
-        video_path: str,
-        html_path: str,
-        intervals: int = 10,
-        num_frames: int = NUM_FRAMES,
-        processor=None,
+        videos: list,
+        processor,
+        interval_len: int = 10,  # seconds
+        stride: int = 5,  # overlap
     ):
         """
-        Args:
-            video_path: path to video
-            html_path: path to retention HTML
-            intervals: number of time intervals to sample
-            num_frames: frames per interval
+        videos: list of dicts with keys {video_path, html_path}
         """
-        self.video_path = video_path
-        self.retention = get_retention(video_path, html_path)  # (T, 1)
-        self.intervals = intervals
-        self.num_frames = num_frames
         self.processor = processor
+        self.samples = []
 
-        total_duration = self.retention.shape[0]
-        self.starts = np.linspace(0, total_duration - num_frames, intervals, dtype=int)
-        self.ends = self.starts + num_frames
+        logger.info("Building multi-video dataset...")
+
+        for vid in videos:
+            video_path = vid["video_path"]
+            html_path = vid["html_path"]
+
+            retention_df = get_retention(video_path, html_path)  # (T, 1)
+            retention = retention_df.values.astype("float32")  # (T, 1)
+
+            T = retention.shape[0]
+
+            for start in range(0, T - interval_len, stride):
+                end = start + int(interval_len)
+
+                self.samples.append(
+                    {
+                        "video_path": video_path,
+                        "start": start,
+                        "end": end,
+                        "retention": retention[start:end],  # numpy slice
+                    }
+                )
+
+        logger.info(f"Dataset size: {len(self.samples)} intervals")
 
     def __len__(self):
-        return len(self.starts)
+        return len(self.samples)
 
     def __getitem__(self, idx):
-        s, e = self.starts[idx], self.ends[idx]
-        data = self.processor(self.video_path, s=s, e=e, va=True)
+        s = self.samples[idx]
 
-        video_tensor = data["video"].half().to(device)
-        audio_tensor = data["audio"].half().to(device)
-        retention_tensor = torch.tensor(
-            self.retention[s:e], dtype=torch.float32, device=device
+        data = self.processor(
+            s["video_path"],
+            s=s["start"],
+            e=s["end"],
+            va=True,
         )
 
-        return video_tensor, audio_tensor, retention_tensor
+        return {
+            "video": data["video"].half(),
+            "audio": data["audio"].half(),
+            "retention": torch.tensor(s["retention"], dtype=torch.float32),
+        }
 
 
 def train(
-    video_path: str,
-    html_path: str,
+    data: list[dict],
     epochs: int = 3,
     batch_size: int = 2,
     lr: float = 1e-4,
@@ -102,7 +118,10 @@ def train(
         num_frames=config.num_frames if hasattr(config, "num_frames") else NUM_FRAMES,
     )
 
-    dataset = VideoRetentionDataset(video_path, html_path, processor=processor)
+    dataset = MultiVideoRetentionDataset(
+        data,
+        processor=processor,
+    )
 
     for video_batch, audio_batch, retention_batch in tqdm(
         dataset, desc="Training step"
@@ -111,57 +130,57 @@ def train(
         print("Audio batch shape:", audio_batch.shape)
         print("Retention batch shape:", retention_batch.shape)
 
-    # dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
-    # criterion = nn.MSELoss()
-    # optimizer = optim.Adam(
-    #     list(vision_projector.parameters()) + list(audio_projector.parameters()), lr=lr
-    # )
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(
+        list(vision_projector.parameters()) + list(audio_projector.parameters()), lr=lr
+    )
 
-    # logger.info("Starting training...")
-    # for epoch in range(epochs):
-    #     epoch_loss = 0
-    #     all_preds = []
-    #     all_targets = []
+    logger.info("Starting training...")
+    for epoch in range(epochs):
+        epoch_loss = 0
+        all_preds = []
+        all_targets = []
 
-    #     for batch in tqdm(dataloader, desc=f"Epoch {epoch+1}/{epochs}"):
-    #         video_batch, audio_batch, retention_batch = batch
+        for batch in tqdm(dataloader, desc=f"Epoch {epoch+1}/{epochs}"):
+            video_batch, audio_batch, retention_batch = batch
 
-    #         video_features = encode_images_or_videos(
-    #             vision_tower, vision_projector, [(video_batch, "video")], config
-    #         )
-    #         video_features = video_features[0]
+            video_features = encode_images_or_videos(
+                vision_tower, vision_projector, [(video_batch, "video")], config
+            )
+            video_features = video_features[0]
 
-    #         audio_embedding, T, F = audio_tower.extract_features(
-    #             audio_batch,
-    #             padding_mask=torch.zeros(audio_batch.shape, device=device).bool(),
-    #         )
-    #         audio_features = audio_projector(audio_embedding)
+            audio_embedding, T, F = audio_tower.extract_features(
+                audio_batch,
+                padding_mask=torch.zeros(audio_batch.shape, device=device).bool(),
+            )
+            audio_features = audio_projector(audio_embedding)
 
-    #         multimodal_features = torch.cat([video_features, audio_features], dim=-1)
+            multimodal_features = torch.cat([video_features, audio_features], dim=-1)
 
-    #         pred = multimodal_features.mean(dim=-1).unsqueeze(-1)  # (B, T, 1)
-    #         loss = criterion(pred, retention_batch)
+            pred = multimodal_features.mean(dim=-1).unsqueeze(-1)  # (B, T, 1)
+            loss = criterion(pred, retention_batch)
 
-    #         optimizer.zero_grad()
-    #         loss.backward()
-    #         optimizer.step()
-    #         epoch_loss += loss.item()
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            epoch_loss += loss.item()
 
-    #         all_preds.append(pred.detach().cpu().numpy().reshape(-1))
-    #         all_targets.append(retention_batch.detach().cpu().numpy().reshape(-1))
+            all_preds.append(pred.detach().cpu().numpy().reshape(-1))
+            all_targets.append(retention_batch.detach().cpu().numpy().reshape(-1))
 
-    #     all_preds = np.concatenate(all_preds)
-    #     all_targets = np.concatenate(all_targets)
+        all_preds = np.concatenate(all_preds)
+        all_targets = np.concatenate(all_targets)
 
-    #     mse = mean_squared_error(all_targets, all_preds)
-    #     mae = mean_absolute_error(all_targets, all_preds)
-    #     r2 = r2_score(all_targets, all_preds)
+        mse = mean_squared_error(all_targets, all_preds)
+        mae = mean_absolute_error(all_targets, all_preds)
+        r2 = r2_score(all_targets, all_preds)
 
-    #     logger.info(
-    #         f"Epoch {epoch+1} | Loss: {epoch_loss/len(dataloader):.4f} | "
-    #         f"MSE: {mse:.4f} | MAE: {mae:.4f} | R²: {r2:.4f}"
-    #     )
+        logger.info(
+            f"Epoch {epoch+1} | Loss: {epoch_loss/len(dataloader):.4f} | "
+            f"MSE: {mse:.4f} | MAE: {mae:.4f} | R²: {r2:.4f}"
+        )
 
     logger.info("Training complete.")
     return vision_projector, audio_projector
@@ -172,4 +191,5 @@ if __name__ == "__main__":
     parser.add_argument("--video_path", type=str, required=True)
     parser.add_argument("--html_path", type=str, required=True)
     args = parser.parse_args()
-    train(args.video_path, args.html_path, epochs=5, batch_size=4, lr=1e-4)
+    data = [{"video_path": args.video_path, "html_path": args.html_path}]
+    train(data, epochs=5, batch_size=4, lr=1e-4)
