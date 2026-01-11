@@ -26,9 +26,9 @@ def add_path(path):
 
 
 ROOT = os.environ.get(
-    "WORKING_DIR", Path(__file__).resolve().parent.parent.parent.parent
+    "WORKING_DIR", str(Path(__file__).resolve().parent.parent.parent.parent)
 )
-path = str(ROOT / "VideoLLaMA2")
+path = os.path.join(ROOT, "VideoLLaMA2")
 logger.info(f"Adding {path} to sys.path")
 add_path(path)
 

@@ -21,7 +21,7 @@ def add_path(path):
         sys.path.insert(0, path)
 
 
-ROOT = os.environ.get("WORKING_DIR", Path(__file__).resolve().parent.parent.parent)
+ROOT = os.environ.get("WORKING_DIR", str(Path(__file__).resolve().parent.parent.parent))
 RAFT_PATH = os.path.join(ROOT, "RAFT/core")
 logger.info(f"{__file__}: adding {RAFT_PATH} to sys.path")
 add_path(RAFT_PATH)
