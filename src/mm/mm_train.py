@@ -157,9 +157,22 @@ def train(
 
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
+    logger.debug(
+        f"Out features dim {vision_projector.out_features=}, {audio_projector.out_features=}"
+    )
+
+    regressor = nn.Sequential(
+        nn.Linear(vision_projector.out_features + audio_projector.out_features, 128),
+        nn.ReLU(),
+        nn.Linear(128, 1),
+    ).to(device)
+
     criterion = nn.MSELoss()
     optimizer = optim.Adam(
-        list(vision_projector.parameters()) + list(audio_projector.parameters()), lr=lr
+        list(vision_projector.parameters())
+        + list(audio_projector.parameters())
+        + list(regressor.parameters()),
+        lr=lr,
     )
 
     logger.info("Starting training...")
