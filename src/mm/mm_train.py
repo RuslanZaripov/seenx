@@ -179,7 +179,6 @@ def train(
             )[0]
 
             audio_batch = torch.cat([a for a in audio_batch], dim=0).to(device)
-            logger.debug(f"Video features shape: {audio_batch.shape}")
             audio_padding_mask = torch.zeros(audio_batch.shape, device=device).bool()
 
             audio_embedding, _, _ = audio_tower.extract_features(
@@ -187,6 +186,12 @@ def train(
                 padding_mask=audio_padding_mask,
             )
             audio_features = audio_projector(audio_embedding)
+            audio_features = audio_features.view(
+                len(audio_batch), -1, audio_features.shape[-1]
+            )
+
+            logger.debug(f"Video features shape: {video_features.shape}")
+            logger.debug(f"Audio features shape: {audio_features.shape}")
 
             multimodal_features = torch.cat(
                 [video_features, audio_features],
