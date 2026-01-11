@@ -117,9 +117,6 @@ class MultiVideoRetentionDataset(Dataset):
                         "retention": retention[start:end],  # numpy slice
                     }
                 )
-        # reduce samples for quick testing --- IGNORE ---
-        self.samples = self.samples[:10]  # --- IGNORE ---
-        # --- IGNORE ---
 
         logger.info(f"Dataset size: {len(self.samples)} intervals")
 
