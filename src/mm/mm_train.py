@@ -78,15 +78,15 @@ def collate_fn(batch):
     videos = [b["video"] for b in batch]
     retentions = torch.cat([b["retention"] for b in batch], dim=0)
 
-    audio = [b["audio"] for b in batch]
-    max_len = max(a.shape[-1] for a in audio)
+    audio = [b["audio"].squeeze(0) for b in batch]  # [T]
+    max_len = max(a.shape[0] for a in audio)
 
     audio_padded = torch.zeros(len(audio), max_len)
     padding_mask = torch.ones(len(audio), max_len, dtype=torch.bool)
 
     for i, a in enumerate(audio):
-        audio_padded[i, : a.shape[-1]] = a
-        padding_mask[i, : a.shape[-1]] = False
+        audio_padded[i, : a.shape[0]] = a
+        padding_mask[i, : a.shape[0]] = False
 
     return {
         "video": videos,
@@ -192,8 +192,9 @@ def train(
         for batch in tqdm(dataloader, desc=f"Epoch {epoch+1}/{epochs}"):
 
             video_batch = batch["video"].to(device)
-            audio_batch = batch["audio"].to(device)
             retention_batch = batch["retention"].to(device)
+
+            audio_batch = batch["audio"].to(device)
             audio_padding_mask = batch["audio_padding_mask"].to(device)
 
             video_features = encode_images_or_videos(
