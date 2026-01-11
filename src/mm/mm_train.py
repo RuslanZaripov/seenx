@@ -174,7 +174,8 @@ def run_epoch(
     for batch in tqdm(dataloader, desc=desc):
         video_batch = batch["video"].to(device)
         audio_batch = batch["audio"].to(device)
-        retention_batch = batch["retention"].to(device)
+
+        retention_batch = torch.cat([r for r in batch["retention"]], dim=0).to(device)
 
         video_features = encode_images_or_videos(
             vision_tower,
