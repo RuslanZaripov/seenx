@@ -199,12 +199,10 @@ def run_epoch(
         pred_per_token = regressor(multimodal_features)
         pred_scalar = pred_per_token.mean(dim=1)
 
-        logger.debug(
-            f"Pred shape: {pred_scalar.shape}, Target shape: {retention_batch.shape}"
-        )
-        # check for NaNs
         if torch.isnan(pred_scalar).any():
             logger.error("NaN values found in predictions!")
+            logger.error(f"Pred shape: {pred_scalar.shape}")
+            logger.error(f"Target shape: {retention_batch.shape}")
             continue
 
         loss = criterion(pred_scalar, retention_batch)
