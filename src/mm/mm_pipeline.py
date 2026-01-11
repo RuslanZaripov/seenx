@@ -33,6 +33,7 @@ def multimodal_features(video_path: str):
     model_path = "DAMO-NLP-SG/VideoLLaMA2.1-7B-AV"
     config = AutoConfig.from_pretrained(model_path)
 
+    config.num_frames = NUM_FRAMES
     config.mm_audio_tower = f"{working_dir}/audio_tower.bin"
     config.mm_projector_a_type = "mlp2x_gelu"
     config.mm_vision_tower = "google/siglip-so400m-patch14-384"
