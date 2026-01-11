@@ -178,7 +178,7 @@ def train(
                 config,
             )[0]
 
-            audio_batch = torch.stack([a for a in audio_batch], dim=0).to(device)
+            audio_batch = torch.cat([a for a in audio_batch], dim=0).to(device)
             logger.debug(f"Video features shape: {audio_batch.shape}")
             audio_padding_mask = torch.zeros(audio_batch.shape, device=device).bool()
 
