@@ -1,12 +1,12 @@
 import os
 import torch
 import argparse
-import datetime
+import numpy as np
+from datetime import datetime
 from torch import nn, optim
 from pathlib import Path
 from torch.utils.data import Dataset, DataLoader
 from functools import partial
-import numpy as np
 from tqdm import tqdm
 from transformers import AutoConfig
 from .mm_processing import process_video
