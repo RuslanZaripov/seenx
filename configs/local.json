@@ -6,7 +6,7 @@
     "shot_segmentor_batch_size": 64,
     "whisper_model_size": "tiny",
     "pose_model": "static/weights/yolo11n-pose.pt",
-    "speaker_probability_threshold": 0.95,
+    "speaker_probability_threshold": 0.9,
     "keypoint_confidence_threshold": 0.3,
     "source_separation_dir": "static/separated/htdemucs/output_audio",
     "clip_model": "openai/clip-vit-base-patch32",
