@@ -1,6 +1,9 @@
 import torch
 import einops
 from .mm_constants import NUM_FRAMES
+from ..logger import Logger
+
+logger = Logger(show=True).get_logger()
 
 
 def temporal_aggregator(mm_projector, config, frames_features):
@@ -41,9 +44,11 @@ def encode_images_or_videos(vision_tower, mm_projector, images, config):
             data = data.expand(num_frames, -1, -1, -1)
         else:
             data = data
+        logger.debug(f"Data shape for item {i} ({modal}): {data.shape}")
         data_batch.append(data)
 
     data_batch = torch.stack(data_batch, dim=0)
+    logger.debug(f"Stacking data batch with shape: {data_batch.shape}")
 
     assert len(data_batch.size()) == 5
     batch_size = data_batch.size(0)
