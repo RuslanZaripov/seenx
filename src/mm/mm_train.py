@@ -223,8 +223,8 @@ def train(
     epochs: int = 3,
     batch_size: int = 2,
     lr: float = 1e-4,
-    save_dir: str = "./saved_models",
-    log_dir: str = "./tensorboard_logs",
+    save_dir: str = "train/saved_models",
+    log_dir: str = "train/tensorboard_logs",
 ):
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
     save_dir = os.path.join(working_dir, save_dir, run_id)
