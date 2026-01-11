@@ -151,6 +151,7 @@ def train(
     dataset = MultiVideoRetentionDataset(
         data,
         processor=processor,
+        interval_len=1,
     )
 
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
