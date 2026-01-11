@@ -224,7 +224,7 @@ def train(
             optimizer.step()
 
             epoch_loss += loss.item()
-            all_preds.append(pred.detach().cpu().numpy().reshape(-1))
+            all_preds.append(pred_scalar.detach().cpu().numpy().reshape(-1))
             all_targets.append(retention_batch.detach().cpu().numpy().reshape(-1))
 
         all_preds = np.concatenate(all_preds)
