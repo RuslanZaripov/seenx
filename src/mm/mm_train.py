@@ -1,4 +1,5 @@
 import torch
+import argparse
 from torch import nn, optim
 from torch.utils.data import Dataset, DataLoader
 from functools import partial
@@ -167,6 +168,8 @@ def train(
 
 
 if __name__ == "__main__":
-    video_path = "path/to/video.mp4"
-    html_path = "path/to/retention.html"
-    train(video_path, html_path, epochs=5, batch_size=4, lr=1e-4)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--video_path", type=str, required=True)
+    parser.add_argument("--html_path", type=str, required=True)
+    args = parser.parse_args()
+    train(args.video_path, args.html_path, epochs=5, batch_size=4, lr=1e-4)
