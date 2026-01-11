@@ -25,7 +25,9 @@ def add_path(path):
         sys.path.insert(0, path)
 
 
-ROOT = Path(os.getcwd()).parent.absolute()
+ROOT = os.environ.get(
+    "WORKING_DIR", Path(__file__).resolve().parent.parent.parent.parent
+)
 path = str(ROOT / "VideoLLaMA2")
 logger.info(f"Adding {path} to sys.path")
 add_path(path)
