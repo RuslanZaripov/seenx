@@ -176,7 +176,7 @@ def train(
                 vision_projector,
                 [(v, "video") for v in video_batch],
                 config,
-            )[0]
+            )
 
             audio_batch = torch.cat([a for a in audio_batch], dim=0).to(device)
             audio_padding_mask = torch.zeros(audio_batch.shape, device=device).bool()
