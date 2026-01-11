@@ -214,9 +214,7 @@ def train(
             )
             logger.debug(f"Multimodal features shape: {multimodal_features.shape}")
 
-            pred = multimodal_features.mean(dim=-1).unsqueeze(-1)
-
-            pred_per_token = regressor(pred)
+            pred_per_token = regressor(multimodal_features)
             pred_scalar = pred_per_token.mean(dim=1)
 
             loss = criterion(pred_scalar, retention_batch)
