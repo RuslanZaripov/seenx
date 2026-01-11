@@ -37,6 +37,7 @@ def build_mm_components(
 
     config = AutoConfig.from_pretrained(model_name)
 
+    config.num_frames = NUM_FRAMES
     config.mm_vision_tower = "google/siglip-so400m-patch14-384"
     config.mm_projector_type = "stc_connector_v35"
     config.mm_audio_tower = "audio_tower.bin"
