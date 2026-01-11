@@ -37,29 +37,24 @@ def build_mm_components(
 
     config = AutoConfig.from_pretrained(model_name)
 
-    # --- Configure towers ---
     config.mm_vision_tower = "google/siglip-so400m-patch14-384"
     config.mm_projector_type = "stc_connector_v35"
     config.mm_audio_tower = "audio_tower.bin"
     config.mm_projector_a_type = "mlp2x_gelu"
 
-    # --- Vision tower ---
     vision_tower = build_vision_tower(config).half().to(device)
     vision_tower.requires_grad_(False)
 
-    # --- Audio tower ---
     audio_tower, _ = build_audio_tower(config)
     audio_tower = audio_tower.half().to(device)
     audio_tower.requires_grad_(False)
 
-    # --- Projectors (trainable) ---
     vision_projector = build_vision_projector(config).half().to(device)
     audio_projector = build_audio_projector(config).half().to(device)
 
     unfreeze_module(vision_projector)
     unfreeze_module(audio_projector)
 
-    # --- Processor ---
     processor = partial(
         process_video,
         processor=vision_tower.image_processor,
@@ -176,7 +171,6 @@ def train(
             audio_batch = batch["audio"].to(device)
             retention_batch = batch["retention"].to(device)
 
-            # --- Vision ---
             video_features = encode_images_or_videos(
                 vision_tower,
                 vision_projector,
@@ -184,14 +178,12 @@ def train(
                 config,
             )[0]
 
-            # --- Audio ---
             audio_embedding, _, _ = audio_tower.extract_features(
                 audio_batch,
                 padding_mask=torch.zeros(audio_batch.shape, device=device).bool(),
             )
             audio_features = audio_projector(audio_embedding)
 
-            # --- Fuse ---
             multimodal_features = torch.cat(
                 [video_features, audio_features],
                 dim=-1,
@@ -208,7 +200,6 @@ def train(
             all_preds.append(pred.detach().cpu().numpy().reshape(-1))
             all_targets.append(retention_batch.detach().cpu().numpy().reshape(-1))
 
-        # --- Metrics ---
         all_preds = np.concatenate(all_preds)
         all_targets = np.concatenate(all_targets)
 
