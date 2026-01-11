@@ -1,8 +1,11 @@
 import os
 import cv2
 import torch
+import argparse
 import numpy as np
 from tqdm import tqdm
+from .config import Config
+from .video_dataset import VideoBatchDataset
 from .logger import Logger
 from .transnetv2_pytorch import TransNetV2
 
@@ -32,10 +35,10 @@ def predictions_to_scenes(predictions: np.ndarray, threshold: float = 0.5):
 
 def batch_shot_segmentation(
     video_path: str,
-    transnet_weights_path: str,
-    batch_size: int = 1000,
+    config: Config,
 ) -> np.ndarray:
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device(config.get("device"))
+    transnet_weights_path = config.get("shot_segmentor")
 
     if not os.path.exists(video_path):
         raise FileNotFoundError(f"Video file {video_path} not found")
@@ -50,56 +53,54 @@ def batch_shot_segmentation(
     model.load_state_dict(state_dict)
     model.eval().to(device)
 
-    cap = cv2.VideoCapture(video_path)
-    if not cap.isOpened():
-        raise RuntimeError(f"Could not open video: {video_path}")
+    def transform(frame: np.ndarray) -> np.ndarray:
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        img = cv2.resize(frame_rgb, (48, 27), interpolation=cv2.INTER_AREA)
+        return img[np.newaxis, :, :, :]
 
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    duration = frame_count / fps if fps > 0 else 0
-
-    logger.info(
-        f"Video FPS: {fps}, Total Frames: {frame_count}, Duration: {duration:.2f} seconds"
+    dataset = VideoBatchDataset(
+        video_path,
+        batch_size=config.get("shot_segmentor_batch_size"),
+        transform=transform,
     )
+    all_frame_pred = np.zeros(dataset.total_frames, dtype=np.float32)
 
-    all_frame_pred = np.zeros(frame_count, dtype=np.float32)
-
-    frames_batch = []
-    frame_indices = []
-    current_index = 0
-
-    def process_batch(frames_batch, frame_indices):
-        batch_tensor = torch.tensor(np.stack(frames_batch), dtype=torch.uint8)
-        single_pred, _ = model(batch_tensor.unsqueeze(0).to(device))
-        preds = torch.sigmoid(single_pred).cpu().numpy().squeeze(0)
-        all_frame_pred[frame_indices] = preds[: len(frame_indices)].flatten()
-
-    with torch.no_grad():
-        pbar = tqdm(total=frame_count, desc="Running shot segmentation", unit="frame")
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                break
-
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            img = cv2.resize(frame_rgb, (48, 27), interpolation=cv2.INTER_AREA)
-            frames_batch.append(img)
-            frame_indices.append(current_index)
-            current_index += 1
-            pbar.update(1)
-
-            if len(frames_batch) == batch_size:
-                process_batch(frames_batch, frame_indices)
-
-                frames_batch.clear()
-                frame_indices.clear()
-
-        if len(frames_batch) > 0:
-            process_batch(frames_batch, frame_indices)
-
-        pbar.close()
-
-    cap.release()
+    for frames_batch, frame_indices in tqdm(
+        dataset,
+        desc="Running shot segmentation",
+    ):
+        with torch.no_grad():
+            batch_tensor = torch.tensor(frames_batch, dtype=torch.uint8).to(device)
+            single_pred, _ = model(batch_tensor.unsqueeze(0))
+            preds = torch.sigmoid(single_pred).cpu().numpy().squeeze(0)
+            all_frame_pred[frame_indices] = preds[: len(frame_indices)].flatten()
 
     scenes = predictions_to_scenes(all_frame_pred)
+    intervals_str = ", ".join([f"{start}:{end}" for start, end in scenes])
+    logger.info(f"Detected scenes (start_frame, end_frame): {intervals_str}")
     return scenes
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--video_path",
+        type=str,
+        required=True,
+        help="Path to the input video file",
+    )
+    parser.add_argument(
+        "--config",
+        type=str,
+        required=False,
+        help="Path to the config file",
+    )
+    args = parser.parse_args()
+
+    config = Config(args.config)
+    video_path = args.video_path
+
+    scenes = batch_shot_segmentation(
+        args.video_path,
+        config=config,
+    )

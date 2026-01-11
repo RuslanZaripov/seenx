@@ -3,6 +3,7 @@
     "face_detector": "static/weights/yolov12l-face.pt",
     "face_embedder": "static/weights/arcface_weights.h5",
     "shot_segmentor": "static/weights/transnetv2-pytorch-weights.pth",
+    "shot_segmentor_batch_size": 64,
     "whisper_model_size": "tiny",
     "pose_model": "static/weights/yolo11n-pose.pt",
     "speaker_probability_threshold": 0.95,

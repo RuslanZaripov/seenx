@@ -3,6 +3,9 @@ from typing import Callable, Optional, List, Union
 import cv2
 from torch.utils.data import IterableDataset
 import numpy as np
+from .logger import Logger
+
+logger = Logger(show=True).get_logger()
 
 
 class VideoBatchDataset(IterableDataset):
@@ -33,6 +36,10 @@ class VideoBatchDataset(IterableDataset):
         self.stride = stride
         self.frame_condition = frame_condition
         self.frame_transform = frame_transform
+        self.total_frames = None
+        logger.info(
+            f"Dataset {video_path}: batches_count={len(self)} {batch_size=} - {self.total_frames} frames"
+        )
 
     def __len__(self):
         cap = cv2.VideoCapture(self.video_path)
@@ -50,9 +57,15 @@ class VideoBatchDataset(IterableDataset):
                 count += 1
 
         cap.release()
+        self.total_frames = count
         return (count + self.batch_size - 1) // self.batch_size
 
     def __iter__(self):
+        """
+        Yields:
+            frames: np.ndarray  (B, H, W, C)  RGB
+            indices: List[int]  absolute frame indices
+        """
         cap = cv2.VideoCapture(self.video_path)
         if not cap.isOpened():
             raise RuntimeError(f"Cannot open video: {self.video_path}")

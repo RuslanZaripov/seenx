@@ -35,7 +35,7 @@ def run_feature_pipeline(
     context["data"]["frame_idx"] = context["data"]["frame_idx"].astype("int32")
 
     shift = config.get("shot_bound_shift_frames")
-    shot_bounds = batch_shot_segmentation(video_path, config.get("shot_segmentor"))
+    shot_bounds = batch_shot_segmentation(video_path, config)
     shot_bounds[:, 0] = np.clip(shot_bounds[:, 0] + shift, 0, total_frames - 1)
     shot_bounds[:, 1] = np.clip(shot_bounds[:, 1] - shift, 0, total_frames - 1)
     context["shift"] = shift
