@@ -195,8 +195,9 @@ def train(
 
             multimodal_features = torch.cat(
                 [video_features, audio_features],
-                dim=-1,
+                dim=1,
             )
+            logger.debug(f"Multimodal features shape: {multimodal_features.shape}")
 
             pred = multimodal_features.mean(dim=-1).unsqueeze(-1)
             loss = criterion(pred, retention_batch)
