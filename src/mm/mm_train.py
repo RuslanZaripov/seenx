@@ -130,7 +130,7 @@ class MultiVideoRetentionDataset(Dataset):
         return {
             "video": data["video"].half(),
             "audio": data["audio"].half(),
-            "retention": torch.tensor(s["retention"], dtype=torch.float32),
+            "retention": torch.tensor(s["retention"]).half(),
         }
 
 
@@ -157,11 +157,15 @@ def train(
 
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
-    regressor = nn.Sequential(
-        nn.Linear(3584, 128),
-        nn.ReLU(),
-        nn.Linear(128, 1),
-    ).to(device)
+    regressor = (
+        nn.Sequential(
+            nn.Linear(3584, 128),
+            nn.ReLU(),
+            nn.Linear(128, 1),
+        )
+        .half()
+        .to(device)
+    )
 
     criterion = nn.MSELoss()
     optimizer = optim.Adam(
