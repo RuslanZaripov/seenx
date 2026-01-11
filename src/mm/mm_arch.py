@@ -15,6 +15,7 @@ def temporal_aggregator(mm_projector, config, frames_features):
     """
     # TODO: improve the merging method.
     # *********** mean pooling *************
+    frames_features = frames_features.float()
     if config.mm_projector_type == "mlp2x_gelu" or config.mm_projector_type == "linear":
         video_features = mm_projector(frames_features.mean(1))
     # # *********** spatial convolution *************

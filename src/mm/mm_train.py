@@ -56,8 +56,8 @@ def build_mm_components(
     audio_tower = audio_tower.half().to(device)
     audio_tower.requires_grad_(False)
 
-    vision_projector = build_vision_projector(config).half().to(device)
-    audio_projector = build_audio_projector(config).half().to(device)
+    vision_projector = build_vision_projector(config).to(device)
+    audio_projector = build_audio_projector(config).to(device)
 
     unfreeze_module(vision_projector)
     unfreeze_module(audio_projector)
@@ -136,7 +136,7 @@ class MultiVideoRetentionDataset(Dataset):
         return {
             "video": data["video"].half(),
             "audio": data["audio"].half(),
-            "retention": torch.tensor(s["retention"]).half(),
+            "retention": torch.tensor(s["retention"]),
         }
 
 
@@ -189,6 +189,7 @@ def run_epoch(
         audio_embedding, _, _ = audio_tower.extract_features(
             audio_batch, padding_mask=audio_padding_mask
         )
+        audio_embedding = audio_embedding.float()
         audio_features = audio_projector(audio_embedding)
         audio_features = audio_features.view(
             len(audio_batch), -1, audio_features.shape[-1]
@@ -266,15 +267,11 @@ def train(
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
-    regressor = (
-        nn.Sequential(
-            nn.Linear(3584, 128),
-            nn.ReLU(),
-            nn.Linear(128, 1),
-        )
-        .half()
-        .to(device)
-    )
+    regressor = nn.Sequential(
+        nn.Linear(3584, 128),
+        nn.ReLU(),
+        nn.Linear(128, 1),
+    ).to(device)
 
     criterion = nn.MSELoss()
     optimizer = optim.Adam(
