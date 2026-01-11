@@ -5,7 +5,7 @@ import pandas as pd
 from .logger import Logger
 from .config import Config
 from .sound_features import sound_features_pipeline, get_vocal_music_features
-from .zoom_features_2 import ZoomFeatureExtractor
+from .zoom_features import ZoomFeatureExtractor
 from .parse_retention import parse_retention
 from .transcribe import collect_wps
 from .seenx_utils import get_video_duration
