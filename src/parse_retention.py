@@ -2,8 +2,8 @@ import re
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from logger import Logger
 from bs4 import BeautifulSoup
+from .logger import Logger
 
 logger = Logger(show=True).get_logger()
 

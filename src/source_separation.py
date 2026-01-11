@@ -6,11 +6,11 @@ import shutil
 import sys
 import select
 import subprocess as sp
-from logger import Logger
-from config import Config
 from pathlib import Path
 from pydub import AudioSegment
 from typing import Dict, List, Tuple, Optional, IO
+from .logger import Logger
+from .config import Config
 
 logger = Logger(show=True).get_logger()
 

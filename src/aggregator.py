@@ -5,7 +5,7 @@ import pandas as pd
 from .logger import Logger
 from .config import Config
 from .sound_features import sound_features_pipeline, get_vocal_music_features
-from .zoom_features_2 import zoom_features_pipeline
+from .zoom_features_2 import ZoomFeatureExtractor
 from .parse_retention import parse_retention
 from .transcribe import collect_wps
 from .seenx_utils import get_video_duration
@@ -97,15 +97,17 @@ def aggregate(
     )
 
     logger.info("Extracting zoom features")
-    zoom_features = zoom_features_pipeline(
-        argparse.Namespace(
+    zoom_extractor = ZoomFeatureExtractor(
+        args=argparse.Namespace(
             model=config.get("optical_flow_model"),
             video=video_path,
             small=True,
             mixed_precision=True,
             alternate_corr=False,
-        )
+        ),
+        config=config,
     )
+    zoom_features = zoom_extractor.run()
 
     logger.info("Collecting words per second data")
     wps_features = collect_wps(

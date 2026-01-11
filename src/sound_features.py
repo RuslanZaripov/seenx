@@ -2,9 +2,9 @@ import os
 import shutil
 import librosa
 import pandas as pd
-from logger import Logger
-from config import Config
-from source_separation import mp4_to_wav, separate, combine
+from .source_separation import mp4_to_wav, separate, combine
+from .config import Config
+from .logger import Logger
 
 logger = Logger(show=True).get_logger()
 

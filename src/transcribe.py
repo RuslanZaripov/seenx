@@ -1,9 +1,9 @@
 import math
-import pandas as pd
-from seenx_utils import get_video_duration
-from logger import Logger
-from config import Config
 import whisper
+import pandas as pd
+from .logger import Logger
+from .config import Config
+from .seenx_utils import get_video_duration
 
 logger = Logger(show=True).get_logger()
 
