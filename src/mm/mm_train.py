@@ -174,7 +174,7 @@ def train(
             video_features = encode_images_or_videos(
                 vision_tower,
                 vision_projector,
-                [(video_batch, "video")],
+                [(video_batch, "video") for video_batch in video_batch],
                 config,
             )[0]
 
