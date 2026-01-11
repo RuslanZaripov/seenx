@@ -178,6 +178,8 @@ def train(
                 config,
             )[0]
 
+            logger.debug(f"Video features shape: {audio_batch.shape}")
+
             audio_embedding, _, _ = audio_tower.extract_features(
                 audio_batch,
                 padding_mask=torch.zeros(audio_batch.shape, device=device).bool(),
