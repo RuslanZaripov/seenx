@@ -74,6 +74,28 @@ def build_mm_components(
     }
 
 
+def collate_fn(batch):
+    videos = [b["video"] for b in batch]
+    retentions = torch.cat([b["retention"] for b in batch], dim=0)
+
+    audio = [b["audio"] for b in batch]
+    max_len = max(a.shape[-1] for a in audio)
+
+    audio_padded = torch.zeros(len(audio), max_len)
+    padding_mask = torch.ones(len(audio), max_len, dtype=torch.bool)
+
+    for i, a in enumerate(audio):
+        audio_padded[i, : a.shape[-1]] = a
+        padding_mask[i, : a.shape[-1]] = False
+
+    return {
+        "video": videos,
+        "audio": audio_padded,
+        "audio_padding_mask": padding_mask,
+        "retention": retentions,
+    }
+
+
 class MultiVideoRetentionDataset(Dataset):
     def __init__(
         self,
@@ -153,7 +175,9 @@ def train(
         processor=processor,
     )
 
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    dataloader = DataLoader(
+        dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn
+    )
 
     criterion = nn.MSELoss()
     optimizer = optim.Adam(
@@ -170,11 +194,12 @@ def train(
             video_batch = batch["video"].to(device)
             audio_batch = batch["audio"].to(device)
             retention_batch = batch["retention"].to(device)
+            audio_padding_mask = batch["audio_padding_mask"].to(device)
 
             video_features = encode_images_or_videos(
                 vision_tower,
                 vision_projector,
-                [(video_batch, "video") for video_batch in video_batch],
+                [(v, "video") for v in video_batch],
                 config,
             )[0]
 
@@ -182,7 +207,7 @@ def train(
 
             audio_embedding, _, _ = audio_tower.extract_features(
                 audio_batch,
-                padding_mask=torch.zeros(audio_batch.shape, device=device).bool(),
+                padding_mask=audio_padding_mask,
             )
             audio_features = audio_projector(audio_embedding)
 
