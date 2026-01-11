@@ -157,12 +157,8 @@ def train(
 
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
-    logger.debug(
-        f"Out features dim {vision_projector.out_features=}, {audio_projector.out_features=}"
-    )
-
     regressor = nn.Sequential(
-        nn.Linear(vision_projector.out_features + audio_projector.out_features, 128),
+        nn.Linear(3584, 128),
         nn.ReLU(),
         nn.Linear(128, 1),
     ).to(device)
@@ -215,7 +211,11 @@ def train(
             logger.debug(f"Multimodal features shape: {multimodal_features.shape}")
 
             pred = multimodal_features.mean(dim=-1).unsqueeze(-1)
-            loss = criterion(pred, retention_batch)
+
+            pred_per_token = regressor(pred)
+            pred_scalar = pred_per_token.mean(dim=1)
+
+            loss = criterion(pred_scalar, retention_batch)
 
             optimizer.zero_grad()
             loss.backward()
