@@ -65,6 +65,8 @@ def aggregate(
     else:
         retention = existing_df[["retention"]]
 
+    logger.info(f"Retention shape: {retention.shape}")
+
     logger.info("Extracting speaker features")
     speaker_features = run_feature_pipeline(
         video_path,
@@ -82,7 +84,7 @@ def aggregate(
     )
     # drop columns frame_face_boxes, frame_keypoints, frame_idx
     speaker_features = speaker_features.drop(
-        columns=["frame_face_boxes", "frame_keypoints"],
+        columns=["frame_face_boxes", "frame_keypoints", "frame_idx"],
         errors="ignore",
     )
 
@@ -108,6 +110,7 @@ def aggregate(
         config=config,
     )
     zoom_features = zoom_extractor.run()
+    zoom_features = zoom_features.drop(columns=["frame_idx"], errors="ignore")
 
     logger.info("Collecting words per second data")
     wps_features = collect_wps(
@@ -129,29 +132,27 @@ def aggregate(
             )
         return mapped
 
-    speaker_features_mapped = map_features_to_retention_index(
-        retention, speaker_features
-    )
+    speaker_fs_mapped = map_features_to_retention_index(retention, speaker_features)
 
-    sound_features_mapped = map_features_to_retention_index(retention, sound_features)
+    sound_fs_mapped = map_features_to_retention_index(retention, sound_features)
 
-    music_features_mapped = map_features_to_retention_index(retention, music_features)
+    music_fs_mapped = map_features_to_retention_index(retention, music_features)
 
-    vocal_features_mapped = map_features_to_retention_index(retention, vocal_features)
+    vocal_fs_mapped = map_features_to_retention_index(retention, vocal_features)
 
-    zoom_features_mapped = map_features_to_retention_index(retention, zoom_features)
+    zoom_fs_mapped = map_features_to_retention_index(retention, zoom_features)
 
-    wps_features_mapped = map_features_to_retention_index(retention, wps_features)
+    wps_fs_mapped = map_features_to_retention_index(retention, wps_features)
 
     aggregated = pd.concat(
         [
             retention,
-            speaker_features_mapped,
-            sound_features_mapped,
-            music_features_mapped,
-            vocal_features_mapped,
-            zoom_features_mapped,
-            wps_features_mapped,
+            speaker_fs_mapped,
+            sound_fs_mapped,
+            music_fs_mapped,
+            vocal_fs_mapped,
+            zoom_fs_mapped,
+            wps_fs_mapped,
         ],
         axis=1,
     )
