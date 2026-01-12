@@ -1,5 +1,6 @@
 import os
 import torch
+import random
 import argparse
 import numpy as np
 from datetime import datetime
@@ -228,6 +229,25 @@ def run_epoch(
     return avg_loss, mse, mae, r2
 
 
+def sample_epoch_videos(
+    data: list[dict],
+    n_total: int = 4,
+    val_ratio: float = 0.25,
+):
+    """
+    Randomly sample n_total videos and split into train/val.
+    """
+    assert len(data) >= n_total, "Not enough videos to sample from"
+
+    sampled = random.sample(data, n_total)
+    n_val = max(1, int(n_total * val_ratio))
+
+    val_videos = sampled[:n_val]
+    train_videos = sampled[n_val:]
+
+    return train_videos, val_videos
+
+
 def train(
     data: list[dict],
     epochs: int = 3,
@@ -257,16 +277,6 @@ def train(
     vision_projector = mm["vision_projector"]
     audio_projector = mm["audio_projector"]
     processor = mm["processor"]
-
-    train_dataset = MultiVideoRetentionDataset(
-        train_videos, processor=processor, interval_len=1
-    )
-    val_dataset = MultiVideoRetentionDataset(
-        val_videos, processor=processor, interval_len=1
-    )
-
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
     regressor = nn.Sequential(
         nn.Linear(3584, 128),
@@ -300,6 +310,33 @@ def train(
 
     logger.info("Starting training...")
     for epoch in range(start_epoch, epochs):
+        train_videos, val_videos = sample_epoch_videos(
+            data,
+            n_total=4,
+            val_ratio=0.25,  # 3 train / 1 val
+        )
+        logger.info(
+            f"Epoch {epoch+1}: "
+            f"Train videos={len(train_videos)}, Val videos={len(val_videos)}"
+        )
+        train_dataset = MultiVideoRetentionDataset(
+            train_videos, processor=processor, interval_len=1
+        )
+        val_dataset = MultiVideoRetentionDataset(
+            val_videos, processor=processor, interval_len=1
+        )
+        train_loader = DataLoader(
+            train_dataset,
+            batch_size=batch_size,
+            shuffle=True,
+            pin_memory=True,
+        )
+        val_loader = DataLoader(
+            val_dataset,
+            batch_size=batch_size,
+            shuffle=False,
+            pin_memory=True,
+        )
         train_loss, train_mse, train_mae, train_r2 = run_epoch(
             train_loader,
             vision_tower,
@@ -312,7 +349,6 @@ def train(
             optimizer,
             train=True,
         )
-
         val_loss, val_mse, val_mae, val_r2 = run_epoch(
             val_loader,
             vision_tower,
