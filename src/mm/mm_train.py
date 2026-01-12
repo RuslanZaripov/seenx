@@ -226,6 +226,10 @@ def run_epoch(
     mae = mae_sum / n
     r2 = 1.0 - mse / (target.var().item() + 1e-6)
 
+    # cuda empty cache to avoid OOM
+    if device.type == "cuda":
+        torch.cuda.empty_cache()
+
     return avg_loss, mse, mae, r2
 
 
