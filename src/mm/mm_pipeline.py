@@ -15,7 +15,7 @@ from .mm_projector import (
     build_vision_projector,
     build_audio_projector,
 )
-from .mm_arch import encode_images_or_videos
+from .mm_arch import encode_images_or_videos, temporal_aggregator
 from ..logger import Logger
 
 logger = Logger(show=True).get_logger()
@@ -108,9 +108,8 @@ def multimodal_features(video_path: str):
         Xa_features = Xa_features.view(len(X_audio), -1, Xa_features.shape[-1])
 
     if len(X_video) > 0:
-        X_features = encode_images_or_videos(
-            vision_tower, mm_projector, X_video, config
-        )
+        X_features = encode_images_or_videos(vision_tower, X_video, config)
+        X_features = temporal_aggregator(mm_projector, config, X_features)
 
     mm_features = []
     idx_a, idx_v = 0, 0

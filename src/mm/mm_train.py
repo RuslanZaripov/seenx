@@ -12,11 +12,10 @@ from transformers import AutoConfig
 from .mm_processing import process_video
 from .mm_models import build_vision_tower, build_audio_tower
 from .mm_projector import build_vision_projector, build_audio_projector
-from .mm_arch import encode_images_or_videos
+from .mm_arch import encode_images_or_videos, temporal_aggregator
 from ..logger import Logger
 from .mm_constants import NUM_FRAMES
 from ..aggregator import get_retention  # your method to get retention
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.model_selection import train_test_split
 from torch.utils.tensorboard import SummaryWriter
 
@@ -168,61 +167,64 @@ def run_epoch(
         regressor.eval()
         desc = "Val"
 
+    n = 0
     epoch_loss = 0.0
-    all_preds, all_targets = [], []
+    mse_sum = mae_sum = 0.0
 
     for batch in tqdm(dataloader, desc=desc):
         video_batch = batch["video"].to(device)
         audio_batch = batch["audio"].to(device)
+        target = torch.cat([r for r in batch["retention"]], dim=0).to(device)
 
-        retention_batch = torch.cat([r for r in batch["retention"]], dim=0).to(device)
+        with torch.no_grad():
+            video_feats = encode_images_or_videos(
+                vision_tower,
+                [(v, "video") for v in video_batch],
+                config,
+            )
+            audio_batch = audio_batch.flatten(0, 1)
+            audio_padding_mask = torch.zeros_like(audio_batch, dtype=torch.bool)
+            audio_feats, _, _ = audio_tower.extract_features(
+                audio_batch, padding_mask=audio_padding_mask
+            )
 
-        video_features = encode_images_or_videos(
-            vision_tower,
-            vision_projector,
-            [(v, "video") for v in video_batch],
-            config,
-        )
+        with torch.amp.autocast(device_type=device.type, enabled=True):
+            video_feats = temporal_aggregator(
+                vision_projector, config, video_feats.float()
+            )
 
-        audio_batch = torch.cat([a for a in audio_batch], dim=0).to(device)
-        audio_padding_mask = torch.zeros(audio_batch.shape, device=device).bool()
-        audio_embedding, _, _ = audio_tower.extract_features(
-            audio_batch, padding_mask=audio_padding_mask
-        )
-        audio_embedding = audio_embedding.float()
-        audio_features = audio_projector(audio_embedding)
-        audio_features = audio_features.view(
-            len(audio_batch), -1, audio_features.shape[-1]
-        )
+            audio_features = audio_projector(audio_feats.float())
+            audio_features = audio_features.view(
+                audio_batch.size(0), -1, audio_features.size(-1)
+            )
 
-        multimodal_features = torch.cat([video_features, audio_features], dim=1)
-        pred_per_token = regressor(multimodal_features)
-        pred_scalar = pred_per_token.mean(dim=1)
+            mm_feats = torch.cat([video_feats, audio_features], dim=1)
+            pred = regressor(mm_feats).mean(dim=1)
 
-        if torch.isnan(pred_scalar).any():
-            logger.error("NaN values found in predictions!")
-            logger.error(f"Pred shape: {pred_scalar.shape}")
-            logger.error(f"Target shape: {retention_batch.shape}")
-            continue
+            if torch.isnan(pred).any():
+                logger.error("NaN values found in predictions!")
+                logger.error(f"Pred shape: {pred.shape}")
+                logger.error(f"Target shape: {target.shape}")
 
-        loss = criterion(pred_scalar, retention_batch)
+            loss = criterion(pred, target)
 
         if train:
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
-        epoch_loss += loss.item()
-        all_preds.append(pred_scalar.detach().cpu().numpy().reshape(-1))
-        all_targets.append(retention_batch.detach().cpu().numpy().reshape(-1))
+        epoch_loss += loss.item() * pred.size(0)
 
-    all_preds = np.concatenate(all_preds)
-    all_targets = np.concatenate(all_targets)
-    mse = mean_squared_error(all_targets, all_preds)
-    mae = mean_absolute_error(all_targets, all_preds)
-    r2 = r2_score(all_targets, all_preds)
+        diff = pred.detach() - target
+        mse_sum += (diff**2).sum().item()
+        mae_sum += diff.abs().sum().item()
+        n += pred.size(0)
 
-    avg_loss = epoch_loss / len(dataloader)
+    avg_loss = epoch_loss / n
+    mse = mse_sum / n
+    mae = mae_sum / n
+    r2 = 1.0 - mse / (target.var().item() + 1e-6)
+
     return avg_loss, mse, mae, r2
 
 
