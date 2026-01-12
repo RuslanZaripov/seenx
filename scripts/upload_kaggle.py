@@ -56,8 +56,8 @@ def upload_to_kaggle(
 
 
 upload_to_kaggle(
-    dataset_folder="static",
-    title="seenx-data",
+    dataset_folder="checkpoints",
+    title="seenx-checkpoints",
     username="zarus03",
-    update=True,
+    update=False,
 )

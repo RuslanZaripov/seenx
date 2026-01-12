@@ -235,6 +235,7 @@ def train(
     lr: float = 1e-4,
     save_dir: str = "train/saved_models",
     log_dir: str = "train/tensorboard_logs",
+    resume_from: str | None = None,
 ):
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
     save_dir = os.path.join(working_dir, save_dir, run_id)
@@ -281,8 +282,24 @@ def train(
         lr=lr,
     )
 
+    start_epoch = 0
+
+    if resume_from is not None:
+        logger.info(f"Loading checkpoint from: {resume_from}")
+        ckpt = torch.load(resume_from, map_location=device)
+
+        vision_projector.load_state_dict(ckpt["vision_projector"])
+        audio_projector.load_state_dict(ckpt["audio_projector"])
+        regressor.load_state_dict(ckpt["regressor"])
+
+        if "optimizer" in ckpt:
+            optimizer.load_state_dict(ckpt["optimizer"])
+
+        start_epoch = ckpt.get("epoch", 0)
+        logger.info(f"Resumed from epoch {start_epoch}")
+
     logger.info("Starting training...")
-    for epoch in range(epochs):
+    for epoch in range(start_epoch, epochs):
         train_loss, train_mse, train_mae, train_r2 = run_epoch(
             train_loader,
             vision_tower,
@@ -321,6 +338,7 @@ def train(
 
         torch.save(
             {
+                "epoch": epoch + 1,
                 "vision_projector": vision_projector.state_dict(),
                 "audio_projector": audio_projector.state_dict(),
                 "regressor": regressor.state_dict(),
