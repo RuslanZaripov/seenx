@@ -189,8 +189,8 @@ class ZoomFeatureExtractor:
         features = (
             features.set_index("frame")
             .reindex(range(dataset.total_frames))
-            .fillna(method="ffill")
-            .fillna(method="bfill")
+            .ffill()
+            .bfill()
             .reset_index()
         )
         return features
