@@ -51,6 +51,7 @@ def aggregate(
 ):
     existing_features = []
     existing_df = pd.DataFrame()
+    logger.info(f"Checking for existing features in {output_path}")
     if os.path.exists(output_path):
         existing_df = pd.read_csv(output_path, index_col=0)
         existing_features = existing_df.columns.tolist()
