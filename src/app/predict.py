@@ -35,12 +35,12 @@ class Predictor:
         features["time"] = pd.to_timedelta(features["time"]).dt.total_seconds()
         if "retention" in features.columns:
             features = features.drop(columns=["retention"])
+        if "frame" in features.columns:
+            features = features.drop(columns=["frame"])
         logger.info(f"Extracted features shape: {features.shape}")
         logger.info(f"Model feature names: {self.model.feature_names_}")
-        logger.info(
-            f"Input feature names: {features.drop(columns=['frame']).columns.tolist()}"
-        )
-        predictions = self.model.predict(features.drop(columns=["frame"]))
+        logger.info(f"Input feature names: {features.columns.tolist()}")
+        predictions = self.model.predict(features)
         # plot retention figure
         self.draw_retention_plot(
             features, predictions, output_path="retention_plot.png"
@@ -51,7 +51,6 @@ class Predictor:
         self, features, predictions, output_path="retention_plot.png"
     ):
         plt.figure(figsize=(10, 6))
-        # convert features["frame"] to int
         frames = features["time"].astype(int)
         plt.plot(frames, predictions)
         plt.title("Predicted Retention over Frames")
