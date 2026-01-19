@@ -36,7 +36,6 @@ class Predictor:
         if "retention" in features.columns:
             features = features.drop(columns=["retention"])
         logger.info(f"Extracted features shape: {features.shape}")
-        logger.log("Input feature count:", features.drop(columns=["frame"]).shape[1])
         logger.info(f"Model feature names: {self.model.feature_names_}")
         logger.info(
             f"Input feature names: {features.drop(columns=['frame']).columns.tolist()}"
