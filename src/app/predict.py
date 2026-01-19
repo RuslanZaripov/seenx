@@ -25,13 +25,13 @@ class Predictor:
         return model
 
     def predict(self, video_path):
-        # features = aggregate(
-        #     video_path=video_path,
-        #     audio_path=video_path,
-        #     output_path="",
-        #     config=self.config,
-        # )
-        features = pd.read_csv("/kaggle/working/faceless_youtube_channel_ideas.csv")
+        features = aggregate(
+            video_path=video_path,
+            audio_path=video_path,
+            output_path="",
+            config=self.config,
+        )
+        # features = pd.read_csv("/kaggle/working/faceless_youtube_channel_ideas.csv")
         features["time"] = pd.to_timedelta(features["time"]).dt.total_seconds()
         if "retention" in features.columns:
             features = features.drop(columns=["retention"])
