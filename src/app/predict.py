@@ -27,7 +27,7 @@ class Predictor:
         features = aggregate(
             video_path=video_path,
             audio_path=video_path,
-            output_path=None,
+            output_path="",
             config=self.config,
         )
         predictions = self.model.predict(features.drop(columns=["frame"]))
