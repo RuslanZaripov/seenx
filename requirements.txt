@@ -26,6 +26,9 @@ treetable
 submitit
 retrying
 
+# predict dependencies
+catboost==1.2.8
+
 demucs @ git+https://github.com/facebookresearch/demucs#egg=demucs
 deepface @ git+https://github.com/serengil/deepface.git
 easyocr @ git+https://github.com/JaidedAI/EasyOCR.git
