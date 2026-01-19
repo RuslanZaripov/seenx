@@ -25,22 +25,21 @@ class Predictor:
         return model
 
     def predict(self, video_path):
-        features = aggregate(
-            video_path=video_path,
-            audio_path=video_path,
-            output_path="",
-            config=self.config,
-        )
-        # features = pd.read_csv("/kaggle/working/faceless_youtube_channel_ideas.csv")
+        # features = aggregate(
+        #     video_path=video_path,
+        #     audio_path=video_path,
+        #     output_path="",
+        #     config=self.config,
+        # )
+        features = pd.read_csv("/kaggle/working/faceless_youtube_channel_ideas.csv")
         features["time"] = pd.to_timedelta(features["time"]).dt.total_seconds()
-        if "retention" in features.columns:
-            features = features.drop(columns=["retention"])
-        if "frame" in features.columns:
-            features = features.drop(columns=["frame"])
-        logger.info(f"Extracted features shape: {features.shape}")
+        train_features = features.drop(
+            columns=[c for c in ["retention", "frame"] if c in features.columns]
+        )
+        logger.info(f"Extracted features shape: {train_features.shape}")
         logger.info(f"Model feature names: {self.model.feature_names_}")
-        logger.info(f"Input feature names: {features.columns.tolist()}")
-        predictions = self.model.predict(features)
+        logger.info(f"Input feature names: {train_features.columns.tolist()}")
+        predictions = self.model.predict(train_features)
         # plot retention figure
         self.draw_retention_plot(
             features, predictions, output_path="retention_plot.png"
@@ -51,11 +50,14 @@ class Predictor:
         self, features, predictions, output_path="retention_plot.png"
     ):
         plt.figure(figsize=(10, 6))
-        frames = features["time"].astype(int)
-        plt.plot(frames, predictions)
+        time = features["time"].astype(int)
+        plt.plot(time, predictions)
         plt.title("Predicted Retention over Frames")
         plt.xlabel("Frame")
         plt.ylabel("Predicted Retention")
+        if "retention" in features.columns:
+            plt.plot(time, features["retention"], label="Actual Retention", alpha=0.5)
+            plt.legend()
         plt.grid()
         plt.savefig(output_path)
         plt.close()
