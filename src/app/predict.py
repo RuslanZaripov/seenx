@@ -53,7 +53,7 @@ class Predictor:
         plt.figure(figsize=(10, 6))
         # convert features["frame"] to int
         frames = features["time"].astype(int)
-        plt.plot(frames, predictions, marker="o")
+        plt.plot(frames, predictions)
         plt.title("Predicted Retention over Frames")
         plt.xlabel("Frame")
         plt.ylabel("Predicted Retention")
