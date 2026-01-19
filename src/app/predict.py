@@ -34,8 +34,8 @@ class Predictor:
         features = pd.read_csv("/kaggle/working/faceless_youtube_channel_ideas.csv")
         features["time"] = pd.to_timedelta(features["time"]).dt.total_seconds()
         logger.info(f"Extracted features shape: {features.shape}")
-        logger.log("Model feature count:", self.model.feature_count_)
-        logger.log("Input feature count:", features.drop(columns=["frame"]).shape[1])
+        # logger.log("Model feature count:", self.model.feature_count_)
+        # logger.log("Input feature count:", features.drop(columns=["frame"]).shape[1])
         logger.log("Model feature names:", self.model.feature_names_)
         logger.log(
             "Input feature names:", features.drop(columns=["frame"]).columns.tolist()
