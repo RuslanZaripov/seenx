@@ -52,11 +52,11 @@ class Predictor:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--model_path", required=True)
     parser.add_argument("--video_path", required=True)
     parser.add_argument("--config_path", required=True)
     args = parser.parse_args()
 
-    model_path = "models/zoom_level_model.cbm"
-    predictor = Predictor(model_path=model_path, config_path=args.config_path)
+    predictor = Predictor(model_path=args.model_path, config_path=args.config_path)
     predictor.predict(args.video_path)
     logger.info("Prediction completed.")
