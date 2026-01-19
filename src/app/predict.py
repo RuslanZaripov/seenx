@@ -1,6 +1,7 @@
 import argparse
 import os
 import catboost as cb
+import pandas as pd
 import matplotlib.pyplot as plt
 from ..config import Config
 from ..logger import Logger
@@ -24,13 +25,16 @@ class Predictor:
         return model
 
     def predict(self, video_path):
-        features = aggregate(
-            video_path=video_path,
-            audio_path=video_path,
-            output_path="",
-            config=self.config,
-        )
-        predictions = self.model.predict(features.drop(columns=["frame"]))
+        # features = aggregate(
+        #     video_path=video_path,
+        #     audio_path=video_path,
+        #     output_path="",
+        #     config=self.config,
+        # )
+        features = pd.read_csv("/kaggle/working/faceless_youtube_channel_ideas.csv")
+        features["time"] = pd.to_timedelta(features["time"]).dt.total_seconds()
+        features = features.drop(columns=["frame"])
+        predictions = self.model.predict(features)
         # plot retention figure
         self.draw_retention_plot(
             features, predictions, output_path="retention_plot.png"
@@ -41,7 +45,9 @@ class Predictor:
         self, features, predictions, output_path="retention_plot.png"
     ):
         plt.figure(figsize=(10, 6))
-        plt.plot(features["frame"], predictions, marker="o")
+        # convert features["frame"] to int
+        frames = features["time"].astype(int)
+        plt.plot(frames, predictions, marker="o")
         plt.title("Predicted Retention over Frames")
         plt.xlabel("Frame")
         plt.ylabel("Predicted Retention")
