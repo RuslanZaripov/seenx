@@ -20,7 +20,7 @@ class Predictor:
         if not os.path.exists(self.model_path):
             raise FileNotFoundError(f"Model file {self.model_path} does not exist.")
 
-        model = cb.CatBoostClassifier()
+        model = cb.CatBoostRegressor()
         model.load_model(self.model_path)
         return model
 
