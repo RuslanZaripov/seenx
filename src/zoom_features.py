@@ -118,10 +118,12 @@ class ZoomFeatureExtractor:
         radial = radial.cpu().numpy()
         ratio = ratio.cpu().numpy()
 
+        logger.debug(f"Processed frames: {len(mag)=} {len(indices)=}")
+
         for i in range(len(mag)):
             features.append(
                 {
-                    "frame": indices[i + start_idx],
+                    "frame": indices[i],
                     "flow_mag_med": float(mag[i]),
                     "radial_med": float(radial[i]),
                     "radial_ratio": float(ratio[i]),
