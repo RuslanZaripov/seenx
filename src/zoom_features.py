@@ -118,8 +118,6 @@ class ZoomFeatureExtractor:
         radial = radial.cpu().numpy()
         ratio = ratio.cpu().numpy()
 
-        logger.debug(f"Processed frames: {len(mag)=} {len(indices)=}")
-
         for i in range(len(mag)):
             features.append(
                 {
@@ -179,7 +177,7 @@ class ZoomFeatureExtractor:
                 indices=indices,
                 grid=grid,
                 features=features,
-                start_idx=1,
+                start_idx=1,  # frame_idx
             )
 
             # frame_idx += len(frames) - 1
