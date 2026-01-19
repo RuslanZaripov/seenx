@@ -123,7 +123,7 @@ class ZoomFeatureExtractor:
         for i in range(len(mag)):
             features.append(
                 {
-                    "frame": indices[i],
+                    "frame": indices[i + start_idx],
                     "flow_mag_med": float(mag[i]),
                     "radial_med": float(radial[i]),
                     "radial_ratio": float(ratio[i]),
@@ -167,10 +167,12 @@ class ZoomFeatureExtractor:
         )
 
         prev_last = frames[-1:]
+        prev_index = indices[-1]
         # frame_idx = len(frames)
 
         for frames, indices in tqdm(iterator, total=len(dataset) - 1):
             frames = np.concatenate([prev_last, frames], axis=0)
+            indices = [prev_index] + indices
 
             self._process_batch(
                 fs=frames,
