@@ -36,9 +36,10 @@ class VideoBatchDataset(IterableDataset):
         self.stride = stride
         self.frame_condition = frame_condition
         self.frame_transform = frame_transform
+        self.total_processed_frames = None
         self.total_frames = None
         logger.info(
-            f"Dataset {video_path}: batches_count={len(self)} {batch_size=} - {self.total_frames} frames"
+            f"Dataset {video_path}: batches_count={len(self)} {batch_size=} - {self.total_processed_frames} frames"
         )
 
     def __len__(self):
@@ -48,6 +49,7 @@ class VideoBatchDataset(IterableDataset):
 
         total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         end = self.end_frame or total
+        self.total_frames = end - self.start_frame
 
         count = 0
         for frame_idx in range(self.start_frame, end):
@@ -57,7 +59,7 @@ class VideoBatchDataset(IterableDataset):
                 count += 1
 
         cap.release()
-        self.total_frames = count
+        self.total_processed_frames = count
         return (count + self.batch_size - 1) // self.batch_size
 
     def __iter__(self):

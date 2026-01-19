@@ -63,7 +63,7 @@ def batch_shot_segmentation(
         batch_size=config.get("shot_segmentor_batch_size"),
         transform=transform,
     )
-    all_frame_pred = np.zeros(dataset.total_frames, dtype=np.float32)
+    all_frame_pred = np.zeros(dataset.total_processed_frames, dtype=np.float32)
 
     for frames_batch, frame_indices in tqdm(
         dataset,

@@ -89,6 +89,7 @@ class ZoomFeatureExtractor:
     def _process_batch(
         self,
         fs: np.ndarray,
+        indices: List[int],
         grid: tuple,
         features: List[dict],
         start_idx: int,
@@ -120,7 +121,7 @@ class ZoomFeatureExtractor:
         for i in range(len(mag)):
             features.append(
                 {
-                    "frame": start_idx + i,
+                    "frame": indices[i + start_idx],
                     "flow_mag_med": float(mag[i]),
                     "radial_med": float(radial[i]),
                     "radial_ratio": float(ratio[i]),
@@ -136,11 +137,12 @@ class ZoomFeatureExtractor:
             video_path=self.args.video,
             batch_size=self.batch_size,
             transform=self.transform,
+            stride=10,
         )
 
         iterator = iter(dataset)
 
-        frames, _ = next(iterator)  # (B+1, H, W, 3)
+        frames, indices = next(iterator)  # (B+1, H, W, 3)
 
         _, h, w, _ = frames.shape
         grid = self.make_center_grid(h, w, self.device, self.flow_stride)
@@ -156,28 +158,38 @@ class ZoomFeatureExtractor:
 
         self._process_batch(
             fs=frames,
+            indices=indices,
             grid=grid,
             features=features,
             start_idx=1,
         )
 
         prev_last = frames[-1:]
-        frame_idx = len(frames)
+        # frame_idx = len(frames)
 
-        for frames, _ in tqdm(iterator, total=len(dataset) - 1):
+        for frames, indices in tqdm(iterator, total=len(dataset) - 1):
             frames = np.concatenate([prev_last, frames], axis=0)
 
             self._process_batch(
                 fs=frames,
+                indices=indices,
                 grid=grid,
                 features=features,
-                start_idx=frame_idx,
+                start_idx=1,
             )
 
-            frame_idx += len(frames) - 1
+            # frame_idx += len(frames) - 1
             prev_last = frames[-1:]
 
-        return pd.DataFrame(features)
+        features = pd.DataFrame(features)
+        features = (
+            features.set_index("frame")
+            .reindex(range(dataset.total_frames))
+            .fillna(method="ffill")
+            .fillna(method="bfill")
+            .reset_index()
+        )
+        return features
 
 
 if __name__ == "__main__":

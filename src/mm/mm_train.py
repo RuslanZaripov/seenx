@@ -23,7 +23,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 logger = Logger(show=True).get_logger()
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-working_dir = Path(__file__).resolve().parent.parent.parent
+working_dir = Path(__file__).resolve().parent.parent.parent.parent
 logger.info(f"{__file__} working directory: {working_dir}")
 
 
