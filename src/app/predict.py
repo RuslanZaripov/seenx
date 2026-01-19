@@ -33,8 +33,8 @@ class Predictor:
         # )
         features = pd.read_csv("/kaggle/working/faceless_youtube_channel_ideas.csv")
         features["time"] = pd.to_timedelta(features["time"]).dt.total_seconds()
-        features = features.drop(columns=["frame"])
-        predictions = self.model.predict(features)
+        logger.info(f"Extracted features shape: {features.shape}")
+        predictions = self.model.predict(features.drop(columns=["frame"]))
         # plot retention figure
         self.draw_retention_plot(
             features, predictions, output_path="retention_plot.png"
