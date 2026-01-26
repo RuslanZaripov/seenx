@@ -70,3 +70,11 @@ A Video Analytics Approach](https://journals.sagepub.com/doi/pdf/10.1177/0047287
 ## VideoLLaMA2
 
 <https://colab.research.google.com/drive/1RxsGAnYq7RlhXKcTeSJzmrCeYQcsI4Ke?usp=sharing>
+
+## Related Work
+
+- [Multimodal-Deep-Regression](https://github.com/GiggleSamurai/Multimodal-Deep-Regression)
+- [Multimodality and Large Multimodal Models (LMMs)](https://huyenchip.com/2023/10/10/multimodal.html)
+- [awesome-vlm-architectures](https://github.com/gokayfem/awesome-vlm-architectures?tab=readme-ov-file#siglip-sigmoid-loss-for-language-image-pre-training)
+- [facebookresearch/multimodal](https://github.com/facebookresearch/multimodal?tab=readme-ov-file#example-scripts)
+- [declare-lab/multimodal-deep-learning](https://github.com/declare-lab/multimodal-deep-learning?utm_source=chatgpt.com)
